@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load necessary Packages 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo)
+pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars)
 
 # Retrieve the Data from FRED using their API ----
 ### (You need an API Key to retrieve the Data, feel free to use mine for this "8af1b2f98eef41dfe4b5ff6ffce1bbb0")
@@ -42,7 +42,7 @@ credit_spread <- fredr(
 )
 
 # 3. Germany CPI (monthly, again, no SA needed)
-cpi_raw <- fredr(
+cpi <- fredr(
   series_id         = "DEUCPIALLMINMEI",
   observation_start = start_date,
   observation_end   = end_date,
@@ -51,7 +51,7 @@ cpi_raw <- fredr(
 
 # Inspecting data briefly
 head(industrial)
-head(cpi_raw)
+head(cpi)
 head(credit_spread)
 ```
 
@@ -59,21 +59,19 @@ head(credit_spread)
 
 ## Exercise 1.1: Plot each time-series in levels before applying any transformations
 
-```{r exercise_1_plots, include=FALSE, cache=TRUE}
-## Exercise 1: Plot each time-series in levels before applying any transformations, clearly indicating data sources 
-
+```{r exercise_1/1_plots, include=FALSE}
 # Combine data into long format
 data_raw <- bind_rows(
   credit_spread %>% 
-    select(date, value) %>% 
+    dplyr::select(date, value) %>%  # Prev. Problems with select fixed, explictly tell it to use select from dplyr
     mutate(series    = "Credit Spread",
            full_name = "ICE BofA Euro High Yield Index Option-Adjusted Spread"),
   industrial %>% 
-    select(date, value) %>% 
+    dplyr::select(date, value) %>% 
     mutate(series    = "Industrial Production",
            full_name = "Germany: Industrial Production Volume (Excl. Construction)"),
-  cpi_raw %>% 
-    select(date, value) %>% 
+  cpi %>% 
+    dplyr::select(date, value) %>% 
     mutate(series    = "Consumer Price Index",
            full_name = "Germany: Harmonized Consumer Price Index (HICP, All Items)")
 )
@@ -84,20 +82,19 @@ series_colors <- c(
   "Industrial Production" = "#ff7f0e", # Example color (orange)
   "Consumer Price Index"  = "#2ca02c"  # Example color (green)
 )
-
 # Create a custom template for plots ----
 theme_academic_individual <- function(base_size = 12) {
-  theme_bw(base_size = base_size) + # theme_bw or theme_classic are good academic starting points
+  theme_bw(base_size = base_size) + 
     theme(
-      plot.title          = element_text(face = "bold", size = rel(1.2), hjust = 0.5),
-      plot.subtitle       = element_text(size = rel(0.9), hjust = 0.5, margin = margin(b = 10)),
-      axis.title.x        = element_text(size = rel(1.0), margin = margin(t = 10)),
-      axis.title.y        = element_text(size = rel(1.0), margin = margin(r = 10)),
-      axis.text           = element_text(size = rel(0.9)),
-      panel.grid.minor    = element_blank(),
-      panel.grid.major    = element_line(color = "grey85", linewidth = 0.4),
-      plot.caption        = element_text(size = rel(0.8), hjust = 0, margin = margin(t = 10)),
-      plot.margin         = margin(10, 15, 10, 10) # t, r, b, l
+      plot.title      = element_text(face = "bold", size = rel(1.2), hjust = 0.5),
+      plot.subtitle   = element_text(size = rel(0.9), hjust = 0.5, margin = margin(b = 10)),
+      axis.title.x    = element_text(size = rel(1.0), margin = margin(t = 10)),
+      axis.title.y    = element_text(size = rel(1.0), margin = margin(r = 10)),
+      axis.text       = element_text(size = rel(0.9)),
+      panel.grid.minor= element_blank(),
+      panel.grid.major= element_line(color = "grey85", linewidth = 0.4),
+      plot.caption    = element_text(size = rel(0.8), hjust = 0, margin = margin(t = 10)),
+      plot.margin     = margin(10, 15, 10, 10) # t, r, b, l
     )
 }
 
@@ -188,75 +185,76 @@ print(plot_cpi)
 
 # Save CPI Plot 
 ggsave("cpi_plot.pdf", plot_cpi, width = 7, height = 5)
-
 ```
 
-*Comments based on first visual inspection of the Data*
+*Comment on these plots:*
+- *CPI*: Non stationary looks like a deterministic trend (unit root) --> hence detrending can render our series stationary and we will test First Differences for stationarity, if this fails we will try higher order integrations to get a stationary series
+- *IPI*: Looks non-stationary, determinisic trend (unit root) and additionally it seems like there is a structural break in our data at the financial crisis (2008 - 2009) [**Magnitude: sharp and much larger drop than usual, Persistence: no return to pre-crisis levels, Post-Break: Possibly new level and Trend**]
+--> again here we will test for Integration of order 1 I(1) for stationarity
+- *Credit Spread:* Look stationary only GFC break needs to be accounted for (othwise could fail stationarity tests) --> no differencin needed 
 
-*Upward trend + clear structural break (2008-09) (constant linear trend)* Mean-reverting around a level, no deterministic trend, large spikes (high volatility) \*Strong deterministic trend (constant linear trend)
 
 ## Exercise 1.2: Conduct unit root and stationarity tests for each series
 
-```{r exercise2_code, include=FALSE}
-# Convert your ▸$value columns to ts objects
-industrial_ts    <- ts(industrial$value,    start = c(2000, 1), freq = 12)
-credit_spread_ts <- ts(credit_spread$value, start = c(2000, 1), freq = 12)
-cpi_ts           <- ts(cpi_raw$value,       start = c(2000, 1), freq = 12)
+Given our previous results we propose to test the following unit root specifications: 
 
-# 1. Industrial Production (trend + break)
-## ADF with trend
-adf_ip <- ur.df(industrial_ts, type = "trend", selectlags = "BIC")
-summary(adf_ip)
+1) We will log CPI and IPI for two reasons, first trends here have a multiplicative relationship and not a linear one hence logarithm allows us to create a linear relationship which is necessary to apply AR, ARMA etc. (Linear Time Series Analysis to them)
 
-## Phillips–Perron with trend
-pp_ip <- ur.pp(industrial_ts, type = "Z-tau", model = "trend", lags = "short")
-summary(pp_ip)
+2) Given that we already know we will apply at least 1 unit differences to get stationary results I(1) processes from our previous visual inspection of the data this gives us a nice feature for interpretation (e.g. we can interprete our log differences as growth rates *GIVE REASON HERE BRIEFLY*)
 
-## DF-GLS with trend
-dfgls_ip <- ur.ers(industrial_ts, type = "DF-GLS", model = "trend", lag.max = 12)
-summary(dfgls_ip)
+```{r exercise_1/2, include=FALSE}
+## Exercise 1.2 Unit Root and Stationarity tests 
 
-## KPSS (null = trend-stationary)
-kpss_ip <- kpss.test(industrial_ts, null = "Trend")
-kpss_ip
+# 1. Take Logs and Δ log(.) of CPI and IPI for reasons described above 
 
-## Zivot‐Andrews (one structural break, both intercept & trend)
-za_ip <- ur.za(industrial_ts, model = "both", lag = 4)
-summary(za_ip)
+industrial <- industrial %>% 
+  mutate(log_value = log(value))  %>% 
+  mutate(dlog_value = log_value - lag(log_value)) %>%
+  drop_na(dlog_value) # Drop first observation because of NA (othwerwise VARselect won't work)
 
 
-# 2. Credit Spread (level only)
-## ADF with drift
-adf_cs <- ur.df(credit_spread_ts, type = "drift", selectlags = "BIC")
-summary(adf_cs)
 
-## Phillips–Perron with constant
-pp_cs <- ur.pp(credit_spread_ts, type = "Z-tau", model = "constant", lags = "short")
-summary(pp_cs)
+cpi <- cpi %>% 
+  mutate(log_value = log(value))  %>% 
+  mutate(dlog_value = log_value - lag(log_value)) %>%
+  drop_na(dlog_value) # Drop first observation because of NA (othwerwise VARselect won't work)
 
-## DF-GLS with constant
-dfgls_cs <- ur.ers(credit_spread_ts, type = "DF-GLS", model = "constant", lag.max = 12)
-summary(dfgls_cs)
+# 2. Use the VARS function to check the optimal # of lags 
+## Reminder: We are using monthly data so reasonable maximum lag order for monthly data is 12 months
+## # AIC: Ng and Perron 2007 results 
 
-## KPSS (null = level-stationary)
-kpss_cs <- kpss.test(credit_spread_ts, null = "Level")
-kpss_cs
+VARselect(industrial$dlog_value, lag.max=12) #Result: AIC: 7 --> choose 7
+VARselect(cpi$dlog_value, lag.max=12) #Result: consensus 12 lags 
+VARselect(credit_spread$value, lag.max=12) # Result: AIC: 7  --> choose 7 Lags 
 
 
-# 3. CPI (strong trend)
-## ADF with trend
-adf_cpi <- ur.df(cpi_ts, type = "trend", selectlags = "BIC")
-summary(adf_cpi)
+# 3. Unit Root tests 
 
-## Phillips–Perron with trend
-pp_cpi <- ur.pp(cpi_ts, type = "Z-tau", model = "trend", lags = "short")
-summary(pp_cpi)
+## 3.1. Unit Root tests without Differentiation 
 
-## DF-GLS with trend
-dfgls_cpi <- ur.ers(cpi_ts, type = "DF-GLS", model = "trend", lag.max = 12)
-summary(dfgls_cpi)
+### URCA - for unit root tests 
 
-## KPSS (null = trend-stationary)
-kpss_cpi <- kpss.test(cpi_ts, null = "Trend")
-kpss_cpi
+summary(ur.df(industrial$dlog_value, type="trend", lags=7))
+summary(ur.df(cpi$dlog_value, type="trend", lags=12))
+summary(ur.df(credit_spread$value, type="trend", lags=7))
+
+
+
+
+
+### KPSS test: 
+
+kpss_cpi <- kpss.test(cpi$dlog_value, null = "Level",
+                      lshort = TRUE)
+
+## 3.2 Unit Root tests with first order Differentiation for CPI and IPI 
+### We don't need to include a time trend here because of First Order Differentiation (only intercepts)
 ```
+
+
+## Exercise 1.3: Identify and estimate candidate AR(p) and ARMA(p,q) models using the ACF and PACF. Which
+model would you choose according to information criteria? Comment the results
+
+
+
+
