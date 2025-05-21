@@ -1,6 +1,6 @@
 ---
 title: "Econometrics 2B: Time Series Analysis - Homework"
-author: "Tim Kühleis, Bartolomeo Jochen Perazolli"
+author: "Tim Kühleis, Bartolomeo Perazzoli"
 date: "`r Sys.Date()`"
 output: html_document
 ---
