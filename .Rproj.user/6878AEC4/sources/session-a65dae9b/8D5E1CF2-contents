@@ -1,0 +1,11 @@
+.RData             # Workspace image (bad practice to track)
+.Rapp.history      # App history
+*.utf8.md          # Knitted intermediate files
+*.knit.md          # Knitted intermediate files
+*.log              # Log files
+*.aux              # LaTeX build files
+*.out
+*.toc
+Homework_Solution_cache/
+_cache/
+*_files/

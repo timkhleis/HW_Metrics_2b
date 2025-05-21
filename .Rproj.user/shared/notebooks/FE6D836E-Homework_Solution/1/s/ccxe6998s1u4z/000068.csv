@@ -1,0 +1,4 @@
+"0",""
+"0","# Save CPI Plot "
+"0","ggsave(""cpi_plot.pdf"", plot_cpi, width = 7, height = 5)"
+"0",""

@@ -1,0 +1,10 @@
+.RData             # Workspace image (bad practice to track)
+.Rapp.history      # App history
+.Rcache/           # Cache folder used by knitr or drake
+cache/             # Common user-named cache folder
+*.utf8.md          # Knitted intermediate files
+*.knit.md          # Knitted intermediate files
+*.log              # Log files
+*.aux              # LaTeX build files
+*.out
+*.toc
