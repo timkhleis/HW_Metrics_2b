@@ -204,6 +204,105 @@ Given our previous results we propose to test the following unit root specificat
 
 ```{r exercise_1/2, include=FALSE}
 
+## Exercise 1.2 Unit Root and Stationarity tests 
+
+# 1. Take Logs and Δ log(.) of CPI and IPI for reasons described above ----
+
+industrial <- industrial %>% 
+  mutate(log_value = log(value))  %>% 
+  mutate(dlog_value = log_value - lag(log_value)) %>%
+  drop_na(dlog_value) # Drop first observation because of NA (othwerwise VARselect won't work)
+
+
+
+cpi <- cpi %>% 
+  mutate(log_value = log(value))  %>% 
+  mutate(dlog_value = log_value - lag(log_value)) %>%
+  drop_na(dlog_value) # Drop first observation because of NA (othwerwise VARselect won't work)
+
+# Take FD for credit spreads --> No Log Transformation here 
+credit_spread <- credit_spread %>%
+  mutate(cs_d1= credit_spread$value - lag(credit_spread$value)) %>%
+  drop_na(cs_d1)
+
+# 1.2 Briefly look at plots of the Transformed Data 
+
+plot(industrial$dlog_value) # no visible trend, fluctuates around constant mean close to 0 --> DRIFT 
+plot(cpi$dlog_value) # more more volatile, no visible trend, fluctuates around constant around mean a bit > 0  --> DRIFT
+plot(credit_spread$value) # fluctuation around constant mean 4-6 bps with a few dramatic spikes in crises 
+plot(credit_spread$cs_d1) # look stationary around 0, with crisis outliers 
+
+# 2. Unit Root tests ----
+
+# 2.1 Use the VARS function to check the optimal # of lags ---- 
+## Reminder: We are using monthly data so reasonable maximum lag order for monthly data is 12 months
+# Use AIC for lag selection in ADF tests (Ng & Perron 2001 Lag Length Selection and the Construction of Unit Root Tests with Good Size and Power) 
+# AIC better size and power for unit root tests 
+
+VARselect(industrial$log_value, lag.max=12) #Result: AIC: 8 --> choose 7
+VARselect(cpi$log_value, lag.max=12) #AIC 12 
+VARselect(industrial$dlog_value, lag.max=12) #Result: AIC: 7 --> choose 7
+VARselect(cpi$dlog_value, lag.max=12) #Result: consensus 12 lags 
+VARselect(credit_spread$value, lag.max=12) # Result: AIC: 7  --> choose 7 Lags 
+VARselect(credit_spread$cs_d1, lag.max = 12) # AIC: 6
+
+
+## 2.1. Unit Root tests without Differentiation ---- 
+
+### URCA - for unit root tests (w/o trends in the beginning only add trend if phi3: H0(trend=0)  —> reject)
+### Remember use an appropriate maximum number of lags --> 12 for monthly data 
+### We selected AIC lags anyway so we can let the function do this automatically and just give max # lags (12 for monthly)
+
+# 1.1 Industrial Production (log‐level) with trend
+adf_ip_lvl <- ur.df(industrial$log_value,
+                    type       = "trend",
+                    lags       = 12,
+                    selectlags = "AIC")
+summary(adf_ip_lvl)
+
+pp_ip_lvl  <- ur.pp(industrial$log_value,
+                    type   = "Z-tau", # trend
+                    model  = "trend",
+                    use.lag = 8)
+summary(pp_ip_lvl)
+
+kpss_ip_lvl <- kpss.test(industrial$log_value, null="Trend") # H0: trend stationarity 
+print(kpss_ip_lvl)
+
+
+# 1.2 CPI (log‐level) with trend
+adf_cpi_lvl <- ur.df(cpi$log_value,
+                     type       = "trend",
+                     lags       = 12,
+                     selectlags = "AIC")
+summary(adf_cpi_lvl)
+
+pp_cpi_lvl  <- ur.pp(cpi$log_value,
+                     type   = "Z-tau", #trend
+                     model  = "trend",
+                     use.lag = 8)
+summary(pp_cpi_lvl)
+
+kpss_cpi_lvl <- kpss.test(cpi$log_value, null="Trend") #H0: trend stationarity
+print(kpss_cpi_lvl)
+
+
+# 1.3 Credit Spread (level) with drift
+adf_cs_lvl <- ur.df(credit_spread$value,
+                    type       = "drift",
+                    lags       = 12,
+                    selectlags = "AIC")
+summary(adf_cs_lvl)
+
+pp_cs_lvl  <- ur.pp(credit_spread$value,
+                    type   = "Z-alpha", #no trend 
+                    model  = "constant",
+                    lags   = "short")
+summary(pp_cs_lvl)
+
+kpss_cs_lvl <- kpss.test(credit_spread$value, null="Level") #H0: level stationarity 
+print(kpss_cs_lvl)
+
 ```
 
 
