@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load necessary Packages 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars)
+pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork)
 
 # Retrieve the Data from FRED using their API ----
 ### (You need an API Key to retrieve the Data, feel free to use mine for this "8af1b2f98eef41dfe4b5ff6ffce1bbb0")
@@ -41,9 +41,10 @@ credit_spread <- fredr(
   aggregation_method   = "avg"      # average of daily values
 )
 
-# 3. Germany CPI (monthly, again, no SA needed)
+# 3. Germany CPI (monthly, Seasonally ajusted data)
+## Originally in our Mail we used the non SA data but SA-adjusted was available too so we switched 
 cpi <- fredr(
-  series_id         = "DEUCPIALLMINMEI",
+  series_id         = "DEUCPALTT01IXOBSAM",
   observation_start = start_date,
   observation_end   = end_date,
   frequency         = "m"
@@ -392,6 +393,26 @@ model would you choose according to information criteria? Comment the results
 
 ```{r exercise_1/3, include=FALSE}
 
+# Exercise 1.3 Identify and estimate candidate AR(p) and ARMA(p,q) models using ACF and PACF 
+## Since we already saw that the we need to take First Differences for stationarity use the I(1) of the series for ACF and PACF Plots
+
+## 1. Create ACF and PACF Plots for our differentiated series 
+
+
+
 
 ```
 
+## Exercise 1.4: For one of the series, plot the in-sample and out-of-sample forecasts from your best model. Comment the results
+
+```{r exercise_1/4, include = FALSE}
+
+```
+
+
+
+# Exercise 2 - : Multivariate analysis
+
+## Exercise 2.1: Select the optimal lag length for your multivariate model
+
+## Exercise 2.2: Estimate the model and verify that the residuals satisfy standard properties
