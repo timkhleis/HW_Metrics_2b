@@ -18,7 +18,9 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork)
 
 # Retrieve the Data from FRED using their API ----
-### (You need an API Key to retrieve the Data, feel free to use mine for this "8af1b2f98eef41dfe4b5ff6ffce1bbb0")
+### (You need an API Key to retrieve the Data, feel free to use mine for this 
+
+fredr_set_key("8af1b2f98eef41dfe4b5ff6ffce1bbb0")
 
 # Define sample window
 start_date <- as.Date("2000-01-01")
@@ -396,10 +398,128 @@ model would you choose according to information criteria? Comment the results
 # Exercise 1.3 Identify and estimate candidate AR(p) and ARMA(p,q) models using ACF and PACF 
 ## Since we already saw that the we need to take First Differences for stationarity use the I(1) of the series for ACF and PACF Plots
 
-## 1. Create ACF and PACF Plots for our differentiated series 
+## 1. Create ACF and PACF Plots for our differentiated series (visual inspection) ---- 
 
+### A. Industrial (Dif log IPI)
+p_ipi_acf  <- ggAcf(industrial$dlog_value, lag.max = 20) + labs(title="ACF: Δ log(Industrial Production Index)")
+p_ipi_pacf <- ggPacf(industrial$dlog_value, lag.max = 20) + labs(title="PACF: Δ log(Industrial Production Index)")
+(ipi_acf <- p_ipi_acf / p_ipi_pacf) + plot_layout(guides="collect")
 
+#### B. CPI (Dif log CPI)
+p_cpi_acf  <- ggAcf(cpi$dlog_value, lag.max = 20) + labs(title="ACF: Δ log(CPI)")
+p_cpi_pacf <- ggPacf(cpi$dlog_value, lag.max = 20) + labs(title="PACF: Δ log(CPI)")
+(cpi_acf <- p_cpi_acf / p_cpi_pacf) + plot_layout(guides="collect")
 
+### C. Credit Spread (Dif CS)
+p_cs_acf  <- ggAcf(credit_spread$cs_d1, lag.max = 20) + labs(title="ACF: Δ Credit Spread")
+p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Δ Credit Spread")
+(cs_acf <- p_cs_acf / p_cs_pacf) + plot_layout(guides="collect")
+
+#### Results
+# IPI: AR(3)
+# CPI: Looks almost like White Noise > at most MA(1) if Ljung Box test fails
+# CS: AR(1) or AR(6) because of the significant downward spike of PACF at lag 6 
+
+## 2. Apply the Classical Manual Search process for optimal ARMA(p,q) Model---- 
+
+# 1) Gahter all 3 series in a named list 
+ts_list <- list(
+  industrial    = industrial   $dlog_value,
+  core_infl     = cpi          $dlog_value,
+  credit_spread = credit_spread$cs_d1
+)
+
+# 2) Function: grid‐search (manually) and  extract top‐5 Models for both ICs
+get_top_models <- function(y, max_p = 7, max_q = 7, n = 5) {
+  grid <- expand.grid(p = 0:max_p, q = 0:max_q)
+  grid$AIC <- grid$BIC <- NA_real_
+  for (i in seq_len(nrow(grid))) {
+    fit         <- Arima(y,
+                         order            = c(grid$p[i], 0, grid$q[i]),
+                         include.constant = TRUE,
+                         method           = "ML")
+    grid$AIC[i] <- fit$aic
+    grid$BIC[i] <- fit$bic
+  }
+  list(
+    topBIC = head(grid[order(grid$BIC), ], n),
+    topAIC = head(grid[order(grid$AIC), ], n)
+  )
+}
+
+# 3) Apply to each series, fit the BIC-winner
+all_models <- lapply(ts_list, function(y) {
+  tops    <- get_top_models(y)
+  best    <- tops$topBIC[1, ]
+  fit_obj <- Arima(y,
+                   order            = c(best$p, 0, best$q),
+                   include.constant = TRUE,
+                   method           = "ML")
+  list(
+    topBIC  = tops$topBIC,
+    topAIC  = tops$topAIC,
+    fit_obj = fit_obj
+  )
+})
+
+# 4) Print top‐5 tables
+for (nm in names(all_models)) {
+  cat("\n=== Series:", nm, "===\n")
+  cat("Top 5 by BIC:\n")
+  print(all_models[[nm]]$topBIC)
+  cat("\nTop 5 by AIC:\n")
+  print(all_models[[nm]]$topAIC)
+}
+
+# 5) Plot each in‐sample fit (overlayed)
+for (nm in names(all_models)) {
+  fit <- all_models[[nm]]$fit_obj
+  y   <- ts_list[[nm]]
+  
+  ts.plot(y, fitted(fit),
+          gpars = list(col  = c("black","red"),
+                       lty  = 1,
+                       lwd  = 2),
+          main = sprintf("%s: ARMA(%d,%d) In‐Sample Fit",
+                         nm, fit$arma[1], fit$arma[2]),
+          ylab = expression(Delta*log~value),
+          xlab = "Time")
+  
+  legend("topleft",
+         legend = c("Observed", "Fitted"),
+         col    = c("black","red"),
+         lty    = 1,
+         lwd    = 2,
+         bty    = "n")
+}
+
+## D. Extra Approach: Use algorithmic search for ARIMA Process (Hyndman-Khandakar algorithm)
+### run auto.arima on each
+auto_models <- lapply(ts_list, function(y) {
+  # force d=0 (we already differenced), no seasonality
+  auto_fit <- auto.arima(y, d = 0, seasonal = FALSE, ic = "BIC",
+                         stepwise = TRUE # Turned on for speed as this is a mere Bonus application
+                         )
+  
+### capture summary info
+  info <- list(
+    model = auto_fit,
+    p     = auto_fit$arma[1],
+    q     = auto_fit$arma[2],
+    AIC   = auto_fit$aic,
+    BIC   = auto_fit$bic
+  )
+  info
+})
+
+### print out results
+for (nm in names(auto_models)) {
+  m <- auto_models[[nm]]
+  cat("\n---", toupper(nm), "---\n")
+  cat(sprintf("auto.arima chose ARMA(%d,%d)\n", m$p, m$q))
+  cat(sprintf("   AIC = %.3f,   BIC = %.3f\n", m$AIC, m$BIC))
+  print(summary(m$model))
+}
 
 ```
 
