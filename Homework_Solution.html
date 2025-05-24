@@ -11,7 +11,7 @@
 
 <meta name="author" content="Tim Kühleis, Bartolomeo Perazzoli" />
 
-<meta name="date" content="2025-05-22" />
+<meta name="date" content="2025-05-24" />
 
 <title>Econometrics 2B: Time Series Analysis - Homework</title>
 
@@ -353,29 +353,111 @@ display: none;
 <h1 class="title toc-ignore">Econometrics 2B: Time Series Analysis -
 Homework</h1>
 <h4 class="author">Tim Kühleis, Bartolomeo Perazzoli</h4>
-<h4 class="date">2025-05-22</h4>
+<h4 class="date">2025-05-24</h4>
 
 </div>
 
 
-<div id="exercise-1" class="section level1">
-<h1>Exercise 1</h1>
+<div id="exercise-1---univariate-analysis" class="section level1">
+<h1>Exercise 1 - Univariate Analysis</h1>
 <div id="exercise-1.1-plot-each-time-series-in-levels-before-applying-any-transformations" class="section level2">
 <h2>Exercise 1.1: Plot each time-series in levels before applying any
 transformations</h2>
-<p><em>Comment on these plots:</em> - <em>CPI</em>: Non stationary looks
-like a deterministic trend (unit root) –&gt; hence detrending can render
-our series stationary and we will test First Differences for
-stationarity, if this fails we will try higher order integrations to get
-a stationary series - <em>IPI</em>: Looks non-stationary, determinisic
-trend (unit root) and additionally it seems like there is a structural
-break in our data at the financial crisis (2008 - 2009)
-[<strong>Magnitude: sharp and much larger drop than usual, Persistence:
-no return to pre-crisis levels, Post-Break: Possibly new level and
-Trend</strong>] –&gt; again here we will test for Integration of order 1
-I(1) for stationarity - <em>Credit Spread:</em> Look stationary only GFC
-break needs to be accounted for (othwise could fail stationarity tests)
-–&gt; no differencin needed</p>
+<pre class="r"><code>knitr::include_graphics(&quot;exercise_1_combined_plot.pdf&quot;)</code></pre>
+<p><embed src="data:application/pdf;base64,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IC9UeXBlMSAvTmFtZSAvRjIgL0Jhc2VGb250IC9IZWx2ZXRpY2EKL0VuY29kaW5nIDkgMCBSID4+CmVuZG9iagoxMSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL05hbWUgL0YzIC9CYXNlRm9udCAvSGVsdmV0aWNhLUJvbGQKL0VuY29kaW5nIDkgMCBSID4+CmVuZG9iagp4cmVmCjAgMTIKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDIxIDAwMDAwIG4gCjAwMDAwMDAxNjMgMDAwMDAgbiAKMDAwMDAwNjg0MCAwMDAwMCBuIAowMDAwMDA2OTIzIDAwMDAwIG4gCjAwMDAwMDcwNDYgMDAwMDAgbiAKMDAwMDAwNzA3OSAwMDAwMCBuIAowMDAwMDAwMjEyIDAwMDAwIG4gCjAwMDAwMDAyOTIgMDAwMDAgbiAKMDAwMDAwOTc3NCAwMDAwMCBuIAowMDAwMDA5ODY4IDAwMDAwIG4gCjAwMDAwMDk5NjUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSAxMiAvSW5mbyAxIDAgUiAvUm9vdCAyIDAgUiA+PgpzdGFydHhyZWYKMTAwNjcKJSVFT0YK"></embed><!-- --></p>
+<div id="comment-on-these-time-series-plots" class="section level3">
+<h3>Comment on these time series Plots</h3>
+<p><strong>Credit Spread Plot</strong></p>
+<p>Before turning to the first plot, we briefly introduce the nature and
+construction of this time series, as it is less conventional than the
+other two, which most Economists should be familiar with. The ICE BofA
+Euro High Yield Index Option-Adjusted Spread (OAS) measures the
+additional yield that investors require, over the euro area risk-free
+rate, to hold euro-denominated corporate bonds rated below investment
+grade (i.e., lower than BB by Fitch or Ba1 by Moody’s). Only publicly
+issued bonds with an outstanding volume above €100 million from issuers
+domiciled in countries with investment-grade sovereign ratings are
+included. The spread is adjusted for embedded options and aggregated
+using market-capitalization weighting. In “less technical” terms, the
+series captures the risk premium associated with holding Eurozone “junk”
+bonds, reflecting both credit and liquidity risk.</p>
+<p>The plot shows that the credit spread generally fluctuates within a
+3–5 percentage point band during stable periods. Sharp spikes in the
+spread coincide with major episodes of financial turmoil. The elevated
+spread in 2001–2003, peaking around 15%, reflects heightened risk
+perceptions during the burst of the “dot-com-bubble” and the post-9/11
+recession. The most pronounced increase occurs during the global
+financial crisis (2007–2009), with a peak above 20% following the
+collapse of the US-Bank Lehman Brothers in September 2008. The final
+surge in our time series between 2011 and 2013 reflects the European
+sovereign debt crisis.</p>
+<p>However, it is important to note that the index only includes
+high-yield corporate bonds issued by firms domiciled in countries with
+investment-grade sovereign ratings, such as Germany. As a result, it
+does not fully capture the sharp rise in credit spreads for corporations
+based in fiscally less stable countries like Greece and Portugal, both
+of which lost investment-grade status in 2010. The observed increase in
+spreads during the European debt crisis thus primarily reflects broader
+market risk aversion and heightened perceptions of credit risk among
+issuers in core Eurozone economies—particularly those expected to act as
+lenders of last resort. For our analysis this is exactly what we want to
+focus on.</p>
+<p>For our time series analysis, visually inspecting the series we see
+the series exhibits strong mean-reversion around a constant level and no
+visible trend, suggesting weak stationarity.</p>
+<p><strong>Industrial Production Index</strong></p>
+<p>The second plot shows Germany’s industrial production index
+(excluding construction) from 2000 to 2019, expressed in real terms with
+2015 as the base year. We can divide the evolution of the series into
+several key phases. From 2003 to mid-2008, the index displays a steady
+and almost linear upward trend, reflecting sustained industrial growth.
+This is followed by a sharp contraction of over 20% during the global
+financial crisis. The recovery begins in early 2009 but remains gradual
+and volatile. Pre-crisis output levels are only reached again by late
+2015, an astounding 7 years after the GFC began. After 2017, the series
+begins to decline again, with little evidence of structural growth,
+indicating a potential stagnation of the German industrial sector in the
+face of increasing global uncertainty.</p>
+<p>This time series effectively captures the cyclical and structural
+dynamics of Germany’s export-oriented manufacturing economy. The
+dramatic collapse in 2008–2009 underscores Germany’s exposure to global
+trade disruptions during the financial crisis. The sluggish recovery and
+cyclical fluctuations reflect subsequent headwinds, including the euro
+area sovereign debt crisis (2011–2012) and the China-led global slowdown
+in 2015—particularly relevant given China’s role as a major importer of
+German industrial goods. The post-2017 downturn likely stems from
+declining external demand and rising global trade tensions.</p>
+<p>Visual inspection suggests that the series is clearly non-stationary,
+characterized by both a deterministic trend and a shift in level post
+GFC. To obtain a stationary series, we take the first difference of the
+outcome. Additionally, we will use a logarithmic transformation as
+log-differences can be interpreted as month-over-month growth rates in
+industrial production.</p>
+<p><strong>Consumer Price Index</strong></p>
+<p>The third plot show the harmonized consumer price index (HICP) for
+Germany from 2000 to 2019, with 2015 as the base year. Over the entire
+sample period, the series exhibits a smooth and almost linear upward
+trend, increasing from approximately 80 to 105. Assuming linearity, this
+corresponds to an average annual growth rate of roughly 1.25 percentage
+points, which is consistent with the broader macroeconomic environment
+of low and stable inflation during this time period. Notably, the sample
+ends just before two major inflationary shocks: the COVID-19 pandemic
+and the 2022 energy crisis triggered by Russia’s invasion of
+Ukraine—both of which led to significant price pressures in subsequent
+years.</p>
+<p>Throughout the period shown, the index displays no signs of mean
+reversion, and inflation appears largely unaffected by the external
+shocks visible in the other two series. Based on visual inspection, the
+series clearly exhibits a deterministic trend component. Thus, it may
+still be trend-stationary. To determine whether the process is
+stationary or not, we will conduct formal unit root tests in the next
+exercise, which will provide more robust evidence regarding the
+stationarity properties of the series. If we conclude, at least as a
+first step, that the series is non-stationary, we will apply log
+differencing, consistent with our approach to the IPI series. This
+transformation may yield a stationary process and additionally offers a
+smooth interpretation as month-over-month inflation rates.</p>
+</div>
 </div>
 <div id="exercise-1.2-conduct-unit-root-and-stationarity-tests-for-each-series" class="section level2">
 <h2>Exercise 1.2: Conduct unit root and stationarity tests for each
@@ -418,6 +500,10 @@ results</p>
 <div id="exercise-1.4-for-one-of-the-series-plot-the-in-sample-and-out-of-sample-forecasts-from-your-best-model.-comment-the-results" class="section level2">
 <h2>Exercise 1.4: For one of the series, plot the in-sample and
 out-of-sample forecasts from your best model. Comment the results</h2>
+<p><em>Comment on the Results</em> Here somthing is very off –&gt;
+possible it is not good to choose an MA process here but should rather
+choose a Model that had an AR(p) process –&gt; let us look at
+identification again and see if we can find a better example</p>
 </div>
 </div>
 <div id="exercise-2---multivariate-analysis" class="section level1">

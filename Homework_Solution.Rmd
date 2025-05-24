@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load necessary Packages 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork)
+pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork, Metrics, gridExtra)
 
 # Retrieve the Data from FRED using their API ----
 ### (You need an API Key to retrieve the Data, feel free to use mine for this 
@@ -58,7 +58,7 @@ head(cpi)
 head(credit_spread)
 ```
 
-# Exercise 1
+# Exercise 1 - Univariate Analysis
 
 ## Exercise 1.1: Plot each time-series in levels before applying any transformations
 
@@ -81,9 +81,9 @@ data_raw <- bind_rows(
 
 # Set color palette 
 series_colors <- c(
-  "Credit Spread"        = "#1f77b4", # Example color (blue)
-  "Industrial Production" = "#ff7f0e", # Example color (orange)
-  "Consumer Price Index"  = "#2ca02c"  # Example color (green)
+  "Credit Spread"        = "#1f77b4", 
+  "Industrial Production" = "#ff7f0e", 
+  "Consumer Price Index"  = "#2ca02c" 
 )
 # Create a custom template for plots ----
 theme_academic_individual <- function(base_size = 12) {
@@ -120,13 +120,13 @@ plot_credit_spread <- ggplot(data_credit, aes(x = date, y = value)) +
     expand      = c(0.01, 0.01)
   ) +
   scale_y_continuous(
-    name   = "ICE BofA Euro High Yield Index Option-Adjusted Spread (Basis Points)",
+    name   = "Credit Spread (Percentage Points)",
     breaks = create_nice_breaks(min(data_credit$value), max(data_credit$value), n = 6) # More breaks
   ) +
   labs(
-    title   = "Credit Spread Time Series (2000-2019)", # More focused title
+    title   = "ICE BofA Euro High Yield Index Option-Adjusted Spread (2000-2019)", # More focused title
     x       = "Date",
-    caption = "Source: FRED (BAMLHE00EHYIOAS)"
+    caption = "Source: ICE Data Indices via FRED (BAMLHE00EHYIOAS)"
   ) +
   theme_academic_individual()
 
@@ -147,13 +147,13 @@ plot_industrial_production <- ggplot(data_industrial, aes(x = date, y = value)) 
     expand      = c(0.01, 0.01)
   ) +
   scale_y_continuous(
-    name   = "Germany: Industrial Production Volume (Index 2015=100)",
+    name   = "Index 2015=100",
     breaks = create_nice_breaks(min(data_industrial$value), max(data_industrial$value), n = 6)
   ) +
   labs(
-    title   = "Industrial Production Time Series (2000-2019)",
+    title   = "Germany: Industrial Production Volume (excl. construction, 2000-2019)",
     x       = "Date",
-    caption = "Source: FRED (DEUPROINDMISMEI)"
+    caption = "Source: OECD via FRED (DEUPROINDMISMEI)"
   ) +
   theme_academic_individual()
 
@@ -178,9 +178,9 @@ plot_cpi <- ggplot(data_cpi, aes(x = date, y = value)) +
     breaks = create_nice_breaks(min(data_cpi$value), max(data_cpi$value), n = 6)
   ) +
   labs(
-    title   = "Consumer Price Index Time Series (2000-2019)",
+    title   = "Germany: Harmonized CPI (All items, 2000-2019)",
     x       = "Date",
-    caption = "Source: FRED (DEUCPIALLMINMEI)"
+    caption = "Source: OECD via FRED (DEUCPIALLMINMEI)"
   ) +
   theme_academic_individual()
 
@@ -188,22 +188,50 @@ print(plot_cpi)
 
 # Save CPI Plot 
 ggsave("cpi_plot.pdf", plot_cpi, width = 7, height = 5)
+
+# Creating a Combined Plot 
+combined_plot <- grid.arrange(plot_credit_spread, plot_industrial_production, plot_cpi, ncol = 1)
+ggsave("exercise_1_combined_plot.pdf", combined_plot, width = 8, height = 12)
+
 ```
 
-*Comment on these plots:*
-- *CPI*: Non stationary looks like a deterministic trend (unit root) --> hence detrending can render our series stationary and we will test First Differences for stationarity, if this fails we will try higher order integrations to get a stationary series
-- *IPI*: Looks non-stationary, determinisic trend (unit root) and additionally it seems like there is a structural break in our data at the financial crisis (2008 - 2009) [**Magnitude: sharp and much larger drop than usual, Persistence: no return to pre-crisis levels, Post-Break: Possibly new level and Trend**]
---> again here we will test for Integration of order 1 I(1) for stationarity
-- *Credit Spread:* Look stationary only GFC break needs to be accounted for (othwise could fail stationarity tests) --> no differencin needed 
+```{r exercise_1_graphcis, results='asis'}
+knitr::include_graphics("exercise_1_combined_plot.pdf")
+```
 
+### Comment on these time series Plots
+
+**Credit Spread Plot**
+
+Before turning to the first plot, we briefly introduce the nature and construction of this time series, as it is less conventional than the other two, which most Economists should be familiar with. The ICE BofA Euro High Yield Index Option-Adjusted Spread (OAS) measures the additional yield that investors require, over the euro area risk-free rate, to hold euro-denominated corporate bonds rated below investment grade (i.e., lower than BB by Fitch or Ba1 by Moody’s). Only publicly issued bonds with an outstanding volume above €100 million from issuers domiciled in countries with investment-grade sovereign ratings are included. The spread is adjusted for embedded options and aggregated using market-capitalization weighting. In "less technical" terms, the series captures the risk premium associated with holding Eurozone "junk" bonds, reflecting both credit and liquidity risk.
+
+The plot shows that the credit spread generally fluctuates within a 3–5 percentage point band during stable periods. Sharp spikes in the spread coincide with major episodes of financial turmoil. The elevated spread in 2001–2003, peaking around 15%, reflects heightened risk perceptions during the burst of the "dot-com-bubble" and the post-9/11 recession. The most pronounced increase occurs during the global financial crisis (2007–2009), with a peak above 20% following the collapse of the US-Bank Lehman Brothers in September 2008. The final surge in our time series between 2011 and 2013 reflects the European sovereign debt crisis.
+
+However, it is important to note that the index only includes high-yield corporate bonds issued by firms domiciled in countries with investment-grade sovereign ratings, such as Germany. As a result, it does not fully capture the sharp rise in credit spreads for corporations based in fiscally less stable countries like Greece and Portugal, both of which lost investment-grade status in 2010. The observed increase in spreads during the European debt crisis thus primarily reflects broader market risk aversion and heightened perceptions of credit risk among issuers in core Eurozone economies—particularly those expected to act as lenders of last resort. For our analysis this is exactly what we want to focus on.
+
+For our time series analysis, visually inspecting the series we see the series exhibits strong mean-reversion around a constant level and no visible trend, suggesting weak stationarity.
+
+**Industrial Production Index**
+
+The second plot shows Germany's industrial production index (excluding construction) from 2000 to 2019, expressed in real terms with 2015 as the base year. We can divide the evolution of the series into several key phases. From 2003 to mid-2008, the index displays a steady and almost linear upward trend, reflecting sustained industrial growth. This is followed by a sharp contraction of over 20% during the global financial crisis. The recovery begins in early 2009 but remains gradual and volatile. Pre-crisis output levels are only reached again by late 2015, an astounding 7 years after the GFC began. After 2017, the series begins to decline again, with little evidence of structural growth, indicating a potential stagnation of the German industrial sector in the face of increasing global uncertainty.
+
+This time series effectively captures the cyclical and structural dynamics of Germany’s export-oriented manufacturing economy. The dramatic collapse in 2008–2009 underscores Germany's exposure to global trade disruptions during the financial crisis. The sluggish recovery and cyclical fluctuations reflect subsequent headwinds, including the euro area sovereign debt crisis (2011–2012) and the China-led global slowdown in 2015—particularly relevant given China’s role as a major importer of German industrial goods. The post-2017 downturn likely stems from declining external demand and rising global trade tensions.
+
+Visual inspection suggests that the series is clearly non-stationary, characterized by both a deterministic trend and a shift in level post GFC. To obtain a stationary series, we take the first difference of the outcome. Additionally, we will use a logarithmic transformation as log-differences can be interpreted as month-over-month growth rates in industrial production.
+
+**Consumer Price Index**
+
+The third plot show the harmonized consumer price index (HICP) for Germany from 2000 to 2019, with 2015 as the base year. Over the entire sample period, the series exhibits a smooth and almost linear upward trend, increasing from approximately 80 to 105. Assuming linearity, this corresponds to an average annual growth rate of roughly 1.25 percentage points, which is consistent with the broader macroeconomic environment of low and stable inflation during this time period. Notably, the sample ends just before two major inflationary shocks: the COVID-19 pandemic and the 2022 energy crisis triggered by Russia’s invasion of Ukraine—both of which led to significant price pressures in subsequent years.
+
+Throughout the period shown, the index displays no signs of mean reversion, and inflation appears largely unaffected by the external shocks visible in the other two series. Based on visual inspection, the series clearly exhibits a deterministic trend component. Thus, it may still be trend-stationary. To determine whether the process is stationary or not, we will conduct formal unit root tests in the next exercise, which will provide more robust evidence regarding the stationarity properties of the series. If we conclude, at least as a first step, that the series is non-stationary, we will apply log differencing, consistent with our approach to the IPI series. This transformation may yield a stationary process and additionally offers a smooth interpretation as month-over-month inflation rates.
 
 ## Exercise 1.2: Conduct unit root and stationarity tests for each series
 
-Given our previous results we propose to test the following unit root specifications: 
+Given our previous results we propose to test the following unit root specifications:
 
-1) We will log CPI and IPI for two reasons, first trends here have a multiplicative relationship and not a linear one hence logarithm allows us to create a linear relationship which is necessary to apply AR, ARMA etc. (Linear Time Series Analysis to them)
+1)  We will log CPI and IPI for two reasons, first trends here have a multiplicative relationship and not a linear one hence logarithm allows us to create a linear relationship which is necessary to apply AR, ARMA etc. (Linear Time Series Analysis to them)
 
-2) Given that we already know we will apply at least 1 unit differences to get stationary results I(1) processes from our previous visual inspection of the data this gives us a nice feature for interpretation (e.g. we can interprete our log differences as growth rates *GIVE REASON HERE BRIEFLY*)
+2)  Given that we already know we will apply at least 1 unit differences to get stationary results I(1) processes from our previous visual inspection of the data this gives us a nice feature for interpretation (e.g. we can interprete our log differences as growth rates *GIVE REASON HERE BRIEFLY*)
 
 ```{r exercise_1/2, include=FALSE}
 
@@ -385,12 +413,11 @@ print(kpss_cs_diff)
 
 *Result*: **Include 2 Tables here showing all the results of the manny tets in a nice overview, to many tests to create an extra table for all the tests**
 
-- Alle 3 Units fail stationarity in the first test which comes a bit suprising for credit spread because we originally would have thaugt that the Credit spread at least would be stationary without transformation --> here we couldn't clearly conclude stationary or non-stationarity, the safe choce is always to go with non-stationarity (because stationarity are simplifying properties we can not just assume --> easier to transform to stationary series)
-- First Differences passed all stationarity tests --> All 3 series are integrated of order 1 
---> Can now continue to Model the ARMA process for these I(1) series 
-
+-   Alle 3 Units fail stationarity in the first test which comes a bit suprising for credit spread because we originally would have thaugt that the Credit spread at least would be stationary without transformation --\> here we couldn't clearly conclude stationary or non-stationarity, the safe choce is always to go with non-stationarity (because stationarity are simplifying properties we can not just assume --\> easier to transform to stationary series)
+-   First Differences passed all stationarity tests --\> All 3 series are integrated of order 1 --\> Can now continue to Model the ARMA process for these I(1) series
 
 ## Exercise 1.3: Identify and estimate candidate AR(p) and ARMA(p,q) models using the ACF and PACF. Which
+
 model would you choose according to information criteria? Comment the results
 
 ```{r exercise_1/3, include=FALSE}
@@ -420,74 +447,82 @@ p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Δ Cr
 # CPI: Looks almost like White Noise > at most MA(1) if Ljung Box test fails
 # CS: AR(1) or AR(6) because of the significant downward spike of PACF at lag 6 
 
-## 2. Apply the Classical Manual Search process for optimal ARMA(p,q) Model---- 
-
-# 1) Gahter all 3 series in a named list 
+## 1) Gather the three stationary series in a named list --------------
 ts_list <- list(
-  industrial    = industrial   $dlog_value,
-  core_infl     = cpi          $dlog_value,
-  credit_spread = credit_spread$cs_d1
+  industrial     = industrial$dlog_value,
+  core_infl      = cpi$dlog_value,
+  credit_spread  = credit_spread$cs_d1
 )
 
-# 2) Function: grid‐search (manually) and  extract top‐5 Models for both ICs
+## 2) Helper: exhaustive (p,q) grid, return top-N by AIC & BIC ---------
 get_top_models <- function(y, max_p = 7, max_q = 7, n = 5) {
   grid <- expand.grid(p = 0:max_p, q = 0:max_q)
   grid$AIC <- grid$BIC <- NA_real_
+  
   for (i in seq_len(nrow(grid))) {
-    fit         <- Arima(y,
-                         order            = c(grid$p[i], 0, grid$q[i]),
-                         include.constant = TRUE,
-                         method           = "ML")
-    grid$AIC[i] <- fit$aic
-    grid$BIC[i] <- fit$bic
+    # wrap in try() so a non-invertible candidate doesn’t kill the loop
+    fit_try <- try(
+      Arima(y,
+            order            = c(grid$p[i], 0, grid$q[i]),
+            include.constant = TRUE,          # OK even after differencing
+            method           = "ML"),
+      silent = TRUE)
+    
+    if (!inherits(fit_try, "try-error")) {
+      grid$AIC[i] <- fit_try$aic
+      grid$BIC[i] <- fit_try$bic
+    }
   }
+  
   list(
     topBIC = head(grid[order(grid$BIC), ], n),
     topAIC = head(grid[order(grid$AIC), ], n)
   )
 }
 
-# 3) Apply to each series, fit the BIC-winner
+## 3) Apply to each series; store top-5 tables + BIC-winner fit ---------
 all_models <- lapply(ts_list, function(y) {
-  tops    <- get_top_models(y)
-  best    <- tops$topBIC[1, ]
-  fit_obj <- Arima(y,
-                   order            = c(best$p, 0, best$q),
-                   include.constant = TRUE,
-                   method           = "ML")
+  tops <- get_top_models(y)
+  best <- tops$topBIC[1, ]
+  
+  best_fit <- Arima(y,
+                    order            = c(best$p, 0, best$q),
+                    include.constant = TRUE,
+                    method           = "ML")
+  
   list(
     topBIC  = tops$topBIC,
     topAIC  = tops$topAIC,
-    fit_obj = fit_obj
+    fit_obj = best_fit
   )
 })
 
-# 4) Print top‐5 tables
+## 4) Console output – top 5 by BIC and AIC -----------------------------
 for (nm in names(all_models)) {
   cat("\n=== Series:", nm, "===\n")
   cat("Top 5 by BIC:\n")
-  print(all_models[[nm]]$topBIC)
+  print(all_models[[nm]]$topBIC, row.names = FALSE)
   cat("\nTop 5 by AIC:\n")
-  print(all_models[[nm]]$topAIC)
+  print(all_models[[nm]]$topAIC, row.names = FALSE)
 }
 
-# 5) Plot each in‐sample fit (overlayed)
+## 5) Overlay plot of observed vs. in-sample BIC-winner -----------------
 for (nm in names(all_models)) {
   fit <- all_models[[nm]]$fit_obj
   y   <- ts_list[[nm]]
   
   ts.plot(y, fitted(fit),
-          gpars = list(col  = c("black","red"),
-                       lty  = 1,
-                       lwd  = 2),
-          main = sprintf("%s: ARMA(%d,%d) In‐Sample Fit",
+          gpars = list(col = c("black", "red"),
+                       lty = 1,
+                       lwd = 2),
+          main = sprintf("%s: ARMA(%d,%d) in-sample fit",
                          nm, fit$arma[1], fit$arma[2]),
           ylab = expression(Delta*log~value),
           xlab = "Time")
   
   legend("topleft",
          legend = c("Observed", "Fitted"),
-         col    = c("black","red"),
+         col    = c("black", "red"),
          lty    = 1,
          lwd    = 2,
          bty    = "n")
@@ -496,8 +531,7 @@ for (nm in names(all_models)) {
 ## D. Extra Approach: Use algorithmic search for ARIMA Process (Hyndman-Khandakar algorithm)
 ### run auto.arima on each
 auto_models <- lapply(ts_list, function(y) {
-  # force d=0 (we already differenced), no seasonality
-  auto_fit <- auto.arima(y, d = 0, seasonal = FALSE, ic = "BIC",
+  auto_fit <- auto.arima(y, seasonal = FALSE, ic = "bic",
                          stepwise = TRUE # Turned on for speed as this is a mere Bonus application
                          )
   
@@ -526,12 +560,121 @@ for (nm in names(auto_models)) {
 ## Exercise 1.4: For one of the series, plot the in-sample and out-of-sample forecasts from your best model. Comment the results
 
 ```{r exercise_1/4, include = FALSE}
+# Exercise 1.4 Plot the in-sample and out-of-sample forecasts from your best model for one of the series
+## We will choose Industrial Production Index (Best Model determined: MA(3) process)
+
+y_full <- industrial$dlog_value            
+
+
+# Step 1. Split our sample into "In-sample" and "Out-of-Sample" Data 
+## We will use 80% of our sample for fitting the Model "in-sample" and the remaining "20%" are out-of-sample
+
+n <- length(y_full)
+split_idx <- floor(0.80 * n)               # 80 % train, 20 % test
+train     <- window(y_full, end   = time(y_full)[split_idx])
+test      <- window(y_full, start = time(y_full)[split_idx + 1])
+
+# Step 2. Fit the MA(3) Model on the "training" data 
+## Default Method: Start with CSS and find starting values then pin down exact values using MLE
+## Both good theorethical properties but also computationally efficient 
+best_fit <- Arima(train, order = c(0, 0, 3),
+                  include.constant = TRUE) 
+
+
+## 5. One-step-ahead fitted & h-step forecasts --------------------------
+h  <- length(test) # 48 months
+fc <- forecast(best_fit, h = h)            # point + 80/95 % intervals
+
+## 6. Plot: training, test, fitted, forecast ----------------------------
+
+# Extract time properties
+ts_start <- start(y_full)
+ts_freq  <- frequency(y_full)
+
+# Align fitted values and forecast outputs to correct time index
+fitted_ts   <- ts(fitted(best_fit), start = ts_start, frequency = ts_freq)
+fc_mean_ts  <- ts(fc$mean,          start = time(test)[1], frequency = ts_freq)
+fc_lower80  <- ts(fc$lower[,1],     start = time(test)[1], frequency = ts_freq)
+fc_upper80  <- ts(fc$upper[,1],     start = time(test)[1], frequency = ts_freq)
+fc_lower95  <- ts(fc$lower[,2],     start = time(test)[1], frequency = ts_freq)
+fc_upper95  <- ts(fc$upper[,2],     start = time(test)[1], frequency = ts_freq)
+
+# Open PDF device
+pdf("in_sample_oos_forecast_plot.pdf", width = 10, height = 6)
+
+# Plot styling
+par(mar = c(4, 4.5, 3, 1), 
+    mgp = c(2.5, 1, 0),
+    cex.main = 1.2,
+    cex.lab = 1.1,
+    cex.axis = 1.0)
+
+# Plot actual data
+plot(y_full,
+     col = "black", 
+     lwd = 1.5,
+     pch = 1,
+     cex = 0.6,
+     main = expression("Industrial " * Delta * "log IPI – In-Sample Fit & OOS Forecast"),
+     xlab = "Time", 
+     ylab = expression(Delta * "log industrial output"),
+     ylim = range(y_full, fc_lower95, fc_upper95, na.rm = TRUE),
+     las = 1)
+
+# Add a subtle grid
+grid(col = "lightgray", lty = "dotted", lwd = 0.5)
+
+# Add fitted values
+lines(fitted_ts, col = "red", lwd = 2.5)
+
+# Add prediction intervals
+lines(fc_upper95, col = "steelblue", lty = 2, lwd = 1.5)   # 95%
+lines(fc_lower95, col = "steelblue", lty = 2, lwd = 1.5)
+lines(fc_upper80, col = "darkblue",  lty = 3, lwd = 1.2)   # 80%
+lines(fc_lower80, col = "darkblue",  lty = 3, lwd = 1.2)
+
+# Add forecast mean
+lines(fc_mean_ts, col = "blue", lwd = 2.5)
+
+# Vertical line at forecast start
+abline(v = time(test)[1], 
+       col = "gray40", 
+       lty = "dashed", 
+       lwd = 1)
+
+# Text annotation for forecast region
+text(x = time(test)[1],
+     y = max(y_full, na.rm = TRUE) * 0.9,
+     labels = "Forecast", 
+     pos = 4, 
+     col = "gray40",
+     cex = 0.9)
+
+# Improved legend
+legend("topright",
+       legend = c("Actual", "Fitted (train)", "Forecast mean",
+                  "80% PI", "95% PI"),
+       col = c("black", "red", "blue", "darkblue", "steelblue"),
+       lty = c(NA, 1, 1, 3, 2),
+       lwd = c(NA, 2.5, 2.5, 1.2, 1.5),
+       pch = c(1, NA, NA, NA, NA),
+       pt.cex = c(0.6, NA, NA, NA, NA),
+       bty = "n",
+       cex = 0.9,
+       inset = c(0.02, 0.02))
+
+dev.off()
+
 
 ```
 
-
+*Comment on the Results* Here somthing is very off --\> possible it is not good to choose an MA process here but should rather choose a Model that had an AR(p) process --\> let us look at identification again and see if we can find a better example
 
 # Exercise 2 - : Multivariate analysis
+
+```{r, include = FALSE}
+rm(list=ls())
+```
 
 ## Exercise 2.1: Select the optimal lag length for your multivariate model
 
