@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load necessary Packages 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork, Metrics, gridExtra)
+pacman::p_load(tidyr, fredr, dplyr, ggplot2, patchwork, urca, tseries, zoo, vars, forecast, patchwork, Metrics, gridExtra, knitr, kableExtra, purrr, tibble)
 
 # Retrieve the Data from FRED using their API ----
 ### (You need an API Key to retrieve the Data, feel free to use mine for this 
@@ -203,7 +203,7 @@ knitr::include_graphics("exercise_1_combined_plot.pdf")
 
 **Credit Spread Plot**
 
-Before turning to the first plot, we briefly introduce the nature and construction of this time series, as it is less conventional than the other two, which most Economists should be familiar with. The ICE BofA Euro High Yield Index Option-Adjusted Spread (OAS) measures the additional yield that investors require, over the euro area risk-free rate, to hold euro-denominated corporate bonds rated below investment grade (i.e., lower than BB by Fitch or Ba1 by Moody’s). Only publicly issued bonds with an outstanding volume above €100 million from issuers domiciled in countries with investment-grade sovereign ratings are included. The spread is adjusted for embedded options and aggregated using market-capitalization weighting. In "less technical" terms, the series captures the risk premium associated with holding Eurozone "junk" bonds, reflecting both credit and liquidity risk.
+Before turning to the first plot, we briefly introduce the nature and construction of this time series, as it is less conventional than the other two, which most Economists should be familiar with. The ICE BofA Euro High Yield Index Option-Adjusted Spread (OAS) measures the additional yield that investors require, over the euro area risk-free rate, to hold euro-denominated corporate bonds rated below investment grade (i.e., lower than BB by Fitch or Ba1 by Moody’s). Only publicly issued bonds with an outstanding volume above €100 million from issuers domiciled in countries with investment-grade sovereign ratings are included. The spread is adjusted for embedded options and aggregated using market-capitalization weighting. In "less technical" terms, the series captures the risk premium compared to the spot Treasury curve associated with holding Eurozone "junk" bonds, reflecting both credit and liquidity risk.
 
 The plot shows that the credit spread generally fluctuates within a 3–5 percentage point band during stable periods. Sharp spikes in the spread coincide with major episodes of financial turmoil. The elevated spread in 2001–2003, peaking around 15%, reflects heightened risk perceptions during the burst of the "dot-com-bubble" and the post-9/11 recession. The most pronounced increase occurs during the global financial crisis (2007–2009), with a peak above 20% following the collapse of the US-Bank Lehman Brothers in September 2008. The final surge in our time series between 2011 and 2013 reflects the European sovereign debt crisis.
 
@@ -227,11 +227,11 @@ Throughout the period shown, the index displays no signs of mean reversion, and 
 
 ## Exercise 1.2: Conduct unit root and stationarity tests for each series
 
-Given our previous results we propose to test the following unit root specifications:
+Given our previous results, we now propose to conduct unit root and stationarity tests in the following order:
 
-1)  We will log CPI and IPI for two reasons, first trends here have a multiplicative relationship and not a linear one hence logarithm allows us to create a linear relationship which is necessary to apply AR, ARMA etc. (Linear Time Series Analysis to them)
+1)  We log-transform CPI and IPI for two reasons. First, the underlying trends in these series appear to be multiplicative rather than linear. Taking logs allows us to linearize the relationship, which is necessary to apply linear time series models such as AR or ARMA. Second, since we will later difference the series to achieve stationarity (based on our earlier visual inspection suggesting I(1) behavior), the log-differenced series can be conveniently interpreted as month-over-month growth rates.
 
-2)  Given that we already know we will apply at least 1 unit differences to get stationary results I(1) processes from our previous visual inspection of the data this gives us a nice feature for interpretation (e.g. we can interprete our log differences as growth rates *GIVE REASON HERE BRIEFLY*)
+2)  We proceed by conducting standard unit root and stationarity tests in the following order: – First, we apply the ADF, ERS/DF_GLS, Phillips-Perron, and KPSS tests to the original (non-differenced) series to check for stationarity of the original series – If these tests suggest non-stationarity, we continue by applying same tests (altough with possibly different trend specifications) to the first-differenced series. If those are found to be stationary, this confirms that the series are integrated of order one, I(1)
 
 ```{r exercise_1/2, include=FALSE}
 
@@ -260,8 +260,7 @@ credit_spread <- credit_spread %>%
 
 plot(industrial$dlog_value) # no visible trend, fluctuates around constant mean close to 0 --> DRIFT 
 plot(cpi$dlog_value) # more more volatile, no visible trend, fluctuates around constant around mean a bit > 0  --> DRIFT
-plot(credit_spread$value) # fluctuation around constant mean 4-6 bps with a few dramatic spikes in crises 
-plot(credit_spread$cs_d1) # look stationary around 0, with crisis outliers 
+plot(credit_spread$cs_d1) # looks stationary around 0, with crisis outliers 
 
 # 2. Unit Root tests ----
 
@@ -409,6 +408,44 @@ kpss_cs_diff <- kpss.test(credit_spread$cs_d1,
                           null = "Level")
 print(kpss_cs_diff)
 
+```
+
+```{r exercise_1/3_Graphs, include=FALSE}
+# 1) Create plot objects
+FD_IPI_graph <- ggplot(industrial, aes(x = date, y = dlog_value)) +
+  geom_line(size = 0.6) +
+  labs(
+    title    = "First Difference Log Industrial Production",
+    x        = "Date",
+    y        = "Delta Log IPI"
+  ) +
+  scale_y_continuous(breaks = create_nice_breaks(min(industrial$dlog_value), max(industrial$dlog_value))) +
+  theme_academic_individual()
+
+FD_CPI_Graph <- ggplot(cpi, aes(x = date, y = dlog_value)) +
+  geom_line(size = 0.6) +
+  labs(
+    title    = "First Difference of log Consumer Price Index",
+    x        = "Date",
+    y        = "Delta Log CPI"
+  ) +
+  scale_y_continuous(breaks = create_nice_breaks(min(cpi$dlog_value), max(cpi$dlog_value))) +
+  theme_academic_individual()
+
+FD_CS_graph <- ggplot(credit_spread, aes(x = date, y = cs_d1)) +
+  geom_line(size = 0.6) +
+  labs(
+    title    = "First Difference of Credit spread series",
+    x        = "Date",
+    y        = "Delta Credit Spread"
+  ) +
+  scale_y_continuous(breaks = create_nice_breaks(min(credit_spread$cs_d1), max(credit_spread$cs_d1))) +
+  theme_academic_individual()
+
+# 2) Save each to its own PDF
+ggsave("FD_IPI_graph.pdf", FD_IPI_graph, width = 8, height = 4, device = "pdf")
+ggsave("FD_CPI_Graph.pdf", FD_CPI_Graph, width = 8, height = 4, device = "pdf")
+ggsave("FD_CS_graph.pdf", FD_CS_graph, width = 8, height = 4, device = "pdf")
 ```
 
 *Result*: **Include 2 Tables here showing all the results of the manny tets in a nice overview, to many tests to create an extra table for all the tests**
