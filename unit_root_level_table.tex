@@ -1,0 +1,26 @@
+\begin{table}[htbp]
+\centering
+\caption{Unit Root and Stationarity Tests - Level Series I(0)}
+\label{tab:unit_root_level}
+% latex table generated in R 4.4.3 by xtable 1.8-4 package
+% Sun May 25 13:23:45 2025
+\begin{tabular}{lllllll}
+  \toprule
+Variable & Test & Test Statistic & P-Value & 1% Crit. Val. & 5% Crit. Val. & 10% Crit. Val. \\ 
+  \midrule
+Industrial Production (log) & ADF & -3.277 & < 0.10 & -3.99 & -3.43 & -3.13 \\ 
+  Industrial Production (log) & PP & -2.785 & > 0.10 & -4 & -3.43 & -3.138 \\ 
+  Industrial Production (log) & KPSS & 0.131 & < 0.10 & 4 & - & - \\ 
+  CPI (log) & ADF & -1.537 & > 0.10 & -3.99 & -3.43 & -3.13 \\ 
+  CPI (log) & PP & -1.564 & > 0.10 & -4 & -3.43 & -3.138 \\ 
+  CPI (log) & KPSS & 0.83 & < 0.05 & 4 & - & - \\ 
+  Credit Spread & ADF & -2.606 & < 0.10 & -3.46 & -2.88 & -2.57 \\ 
+  Credit Spread & PP & - & - & - & - & - \\ 
+  Credit Spread & KPSS & 0.807 & < 0.05 & 4 & - & - \\ 
+   \bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Note: ADF and PP tests have H$_0$: unit root present. KPSS test has H$_0$: stationarity. For Industrial Production and CPI, tests include trend; for Credit Spread, tests include drift only.
+\end{tablenotes}
+\end{table}
