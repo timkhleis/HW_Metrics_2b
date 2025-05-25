@@ -2,7 +2,26 @@
 title: "Econometrics 2B: Time Series Analysis - Homework"
 author: "Tim Kühleis, Bartolomeo Perazzoli"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    fig_caption: true # Ensures figures are treated as LaTeX figures with captions
+header-includes:
+  - \usepackage{float}
+  - \usepackage{amsmath}
+  - \usepackage{amsfonts}
+  - \usepackage{amssymb}
+  - \usepackage{graphicx}
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{caption} 
+  - \usepackage{threeparttable} 
+  - \usepackage{fancyhdr}
+  - \usepackage[utf8]{inputenc}
+  - \usepackage{geometry}
+  - \geometry{a4paper, margin=1in}
+  - \usepackage{subcaption} 
 ---
 
 ```{r setup, include=FALSE}
@@ -566,9 +585,9 @@ table1_latex <- table1_data %>%
 
 ##— Table 2: First Differences -----------------------------------------------
 table2_data <- data.frame(
-  Series           = c("Δ Industrial Production (log)", rep("",3),
-                       "Δ CPI (log)",                   rep("",3),
-                       "Δ Credit Spread",               rep("",3)),
+  Series           = c("Delta Industrial Production (log)", rep("",3),
+                       "Delta CPI (log)",                   rep("",3),
+                       "Delta Credit Spread",               rep("",3)),
   Test             = c("ADF","PP","KPSS","",
                        "ADF","PP","KPSS","",
                        "ADF","PP","KPSS",""),
@@ -639,17 +658,17 @@ cat(table1_latex)
   \centering
   \begin{subfigure}[t]{0.32\textwidth}
     \includegraphics[width=\textwidth]{FD_IPI_graph.pdf}
-    \caption{Δ log IPI}
+    \caption{Delta log IPI}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.32\textwidth}
     \includegraphics[width=\textwidth]{FD_CPI_Graph.pdf}
-    \caption{Δ log CPI}
+    \caption{Delta log CPI}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.32\textwidth}
     \includegraphics[width=\textwidth]{FD_CS_graph.pdf}
-    \caption{Δ Credit Spread}
+    \caption{Delta Credit Spread}
   \end{subfigure}
   \caption{First Differences of the Three Stationary Series}
   \label{fig:first_differences}
@@ -658,11 +677,11 @@ cat(table1_latex)
 
 First before we do the unit root tests we again plot the time series of the integrated processes for inspection and conclude the following about the appropriate setup for unit root tests: 
 
-- **Industrial Production (Δlog IPI):** The series fluctuates around a non-zero constant mean without a trend, justifying the use of drift specifications for ADF/PP and a level null in KPSS.
+- **Industrial Production (Delta log IPI):** The series fluctuates around a non-zero constant mean without a trend, justifying the use of drift specifications for ADF/PP and a level null in KPSS.
 
-- **CPI (Δlog CPI):** The differenced price index series also shows no trend, only short-term fluctuations around a stable mean. This supports the same test setup.
+- **CPI (Delta log CPI):** The differenced price index series also shows no trend, only short-term fluctuations around a stable mean. This supports the same test setup.
 
-- **Credit Spread (Δ):** Although more volatile, especially around 2009, the series remains mean-reverting without trend, making the constant-only specification reasonable.
+- **Credit Spread (Delta):** Although more volatile, especially around 2009, the series remains mean-reverting without trend, making the constant-only specification reasonable.
 
 
 ```{r latextab2, results='asis'}
@@ -688,20 +707,20 @@ After doing the tests, we conclude the following:
 ## 1. Create ACF and PACF Plots for our differentiated series (visual inspection) ---- 
 
 ### A. Industrial (Dif log IPI)
-p_ipi_acf  <- ggAcf(industrial$dlog_value, lag.max = 20) + labs(title="ACF: Δ log(Industrial Production Index)")
-p_ipi_pacf <- ggPacf(industrial$dlog_value, lag.max = 20) + labs(title="PACF: Δ log(Industrial Production Index)")
+p_ipi_acf  <- ggAcf(industrial$dlog_value, lag.max = 20) + labs(title="ACF: Delta log(Industrial Production Index)")
+p_ipi_pacf <- ggPacf(industrial$dlog_value, lag.max = 20) + labs(title="PACF: Delta log(Industrial Production Index)")
 (ipi_acf <- p_ipi_acf / p_ipi_pacf) + plot_layout(guides="collect")
 ggsave("ipi_acf_grid.pdf", ipi_acf, width = 8, height = 4)
 
 #### B. CPI (Dif log CPI)
-p_cpi_acf  <- ggAcf(cpi$dlog_value, lag.max = 20) + labs(title="ACF: Δ log(CPI)")
-p_cpi_pacf <- ggPacf(cpi$dlog_value, lag.max = 20) + labs(title="PACF: Δ log(CPI)")
+p_cpi_acf  <- ggAcf(cpi$dlog_value, lag.max = 20) + labs(title="ACF: Delta log(CPI)")
+p_cpi_pacf <- ggPacf(cpi$dlog_value, lag.max = 20) + labs(title="PACF: Delta log(CPI)")
 (cpi_acf <- p_cpi_acf / p_cpi_pacf) + plot_layout(guides="collect")
 ggsave("cpi_acf_grid.pdf", cpi_acf, width = 8, height = 4)
 
 ### C. Credit Spread (Dif CS)
-p_cs_acf  <- ggAcf(credit_spread$cs_d1, lag.max = 20) + labs(title="ACF: Δ Credit Spread")
-p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Δ Credit Spread")
+p_cs_acf  <- ggAcf(credit_spread$cs_d1, lag.max = 20) + labs(title="ACF: Delta Credit Spread")
+p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Delta Credit Spread")
 (cs_acf <- p_cs_acf / p_cs_pacf) + plot_layout(guides="collect")
 ggsave("cs_acf_grid.pdf",  cs_acf,  width = 8, height = 4)
 
@@ -823,8 +842,8 @@ for (nm in names(all_models)) {
 
 ```{r, results='asis'}
 knitr::include_graphics("ipi_acf_grid.pdf")
-model_tables$industrial_bic
-model_tables$industrial_aic
+cat(model_tables$industrial_bic) # Use cat() to explicitly print the string
+cat(model_tables$industrial_aic) # Use cat() to explicitly print the string
 ```
 
 **Comment:** Inspecting the PACF plot, the pattern appears somewhat irregular. We observe a significant spike at lag 1, a non-significant lag 2, followed by another significant spike at lag 3. This suggests an autoregressive process of order between 1 and 3. As a conservative choice, we initially lean toward an AR(3) specification. This is further supported by the ranking of optimal candidates by the Bayesian Information Criterion (BIC), where the AR(3) model appears as the fourth-best candidate, performing only marginally worse than the top models.
@@ -835,10 +854,16 @@ Residual diagnostics (see final table in Exercise 1.3) confirm that the MA(3) mo
 
 ### Consumer Price Index:
 
-```{r}
+```{r, results='asis'}
 knitr::include_graphics("cpi_acf_grid.pdf")
-model_tables$core_infl_bic
-model_tables$core_infl_aic
+
+# Convert BIC table to LaTeX and print
+cat(knitr::kable(model_tables$core_infl_bic, format = "latex", booktabs = TRUE, caption = "Core Inflation BIC Table"))
+cat("\n\n") # Add some vertical space between the tables
+
+# Convert AIC table to LaTeX and print
+cat(knitr::kable(model_tables$core_infl_aic, format = "latex", booktabs = TRUE, caption = "Core Inflation AIC Table"))
+
 ```
 
 **Comment:** Looking at the MoM inflation rate (log-differenced CPI), the ACF and PACF plots show no significant autocorrelation at any lag, as all values remain well within the confidence bands. Based on visual inspection alone, this pattern is most consistent with a simple white noise process.
@@ -849,10 +874,17 @@ Turning to residual diagnostics, we fail to reject both null hypotheses of the L
 
 ### Credit Spread Index:
 
-```{r}
+```{r, results='asis'}
 knitr::include_graphics("cs_acf_grid.pdf")
-model_tables$credit_spread_bic
-model_tables$credit_spread_aic
+
+# Convert BIC table to LaTeX and print
+cat(knitr::kable(model_tables$credit_spread_bic, format = "latex", booktabs = TRUE, caption = "Credit Spread BIC Table"))
+cat("\n\n") # Add some vertical space between the tables
+
+# Convert AIC table to LaTeX and print
+cat(knitr::kable(model_tables$credit_spread_aic, format = "latex", booktabs = TRUE, caption = "Credit Spread AIC Table"))
+
+
 ```
 
 **Comment:**
@@ -956,7 +988,7 @@ ar3_s1 <- Arima(ipi_s1, order = c(3, 0, 0))
 pdf("AR3_InSample_Fit.pdf", width = 8, height = 5)
 plot(cbind(ipi_s1, ar3_s1$fitted), plot.type = "s", col = c("black", "red"), lty = 1,
      main = "AR(3) In-Sample Fit – MOM change Industrial Production in %",
-     ylab = "Δlog IPI", xlab = "Time")
+     ylab = "Delta log IPI", xlab = "Time")
 legend("topright", legend = c("Actual", "In-sample fit (AR(3))"),
        col = c("black", "red"), lty = 1, bty = "n")
 dev.off()
@@ -965,7 +997,7 @@ dev.off()
 ar3_s1_fc <- forecast(object = ipi_s1, model = ar3_s1, h = 12)
 pdf("AR3_OutSample_Forecast.pdf", width = 8, height = 5)
 plot(ar3_s1_fc, main = "AR(3) Out-of-Sample Forecast – MOM change in Industrial Production in %",
-     ylab = "Δlog IPI", xlab = "Time")
+     ylab = "Delta log IPI", xlab = "Time")
 dev.off()
 
 ```
@@ -1057,9 +1089,6 @@ library(vars)
 library(knitr)
 library(kableExtra)
 sel <- VARselect(data_mat, lag.max = 8, type = "const")
-sel$selection
-
-
 
 
 sel_df <- data.frame(
@@ -1218,7 +1247,7 @@ par(mfrow = c(1,2), mar = c(4,4,2,1))
 
 # Panel 1
 plot(ts_hist,
-     ylab = expression(Δ~log~CPI),
+     ylab = expression(Delta~log~CPI),
      xlab = "Years",
      main = "Actual vs. Fitted CPI",
      col  = "black", lty = 1)
@@ -1233,7 +1262,7 @@ legend("topleft",
 plot(ts_hist,
      xlim = c(time(ts_hist)[1], time(ts_hi)[length(ts_hi)]),
      ylim = range(c(ts_hist, ts_lo, ts_hi)),
-     ylab = expression(Δ~log~CPI),
+     ylab = expression(Delta~log~CPI),
      xlab = "Years",
      main = "CPI 1-Yr Ahead Forecast",
      col  = "black", lty = 1)
@@ -1283,7 +1312,6 @@ In conclusion, the VAR(6) model delivers an acceptable in-sample fit and a plaus
 data_chol <- data_mat[, c("cs", "ip", "cpi")]  # Cholesky ordering: cs → ip → cpi
 var_chol  <- VAR(data_chol, p = p_opt, type = "const")
 summary(var_chol)
-
 ```
 
 We apply the following Cholesky ordering to our three variables:  
@@ -1408,7 +1436,7 @@ Finally, while the magnitudes are not large (typically around 0.1–0.3 SD), the
 
 ## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
 
-```{r six, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
+```{r exercise_2/6, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
 # reversed ordering
 data_chol_rev <- data_scaled[, c("cpi", "cs", "ip")] 
 var_chol_rev  <- VAR(data_chol_rev, p = p_opt, type = "const")
