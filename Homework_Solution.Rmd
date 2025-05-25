@@ -1105,9 +1105,9 @@ kable(
 ```
 
 **Comment:**  
-The lag selection criteria point to different optimal values: both AIC *(Akaike Information Criterion)* and FPE *(Final Prediction Error)* suggest a lag length of 6, while HQ *(Hannan–Quinn)* selects 3 and SC *(Schwarz Criterion)* selects 1. Following standard practice, we prioritize the more parsimonious criteria, HQ and SC, which recommend lag orders of 3 and 1, respectively.
+The lag selection criteria point to different optimal values: both AIC *(Akaike Information Criterion)* and FPE *(Final Prediction Error)* suggest a lag length of 6, while HQ *(Hannan–Quinn)* selects 3 and SC *(Schwarz Criterion)* selects 1.
 
-Among these, we choose lag 3, as selected by the HQ criterion. While this includes fewer lags than the AIC-optimal specification, it still ensures that residuals are approximately serially uncorrelated (as confirmed in Question 2), which is essential for valid inference and for interpreting impulse response functions. In addition, a more parsimonious model reduces the risk of overfitting, which is particularly important in finite samples.
+Among these, we choose lag 6, as selected by the AIC criterion. While this is less parsimonious than the alternatives suggested by HQ and SC, it ensures that the residuals are approximately serially uncorrelated (as confirmed in Question 2), which is essential for valid inference and the interpretation of impulse response functions. Choosing a higher lag length may also better capture the dynamics of the system, especially in the presence of autocorrelation.
 
 
 ## Exercise 2.2: Estimate the model and verify that the residuals satisfy standard properties
