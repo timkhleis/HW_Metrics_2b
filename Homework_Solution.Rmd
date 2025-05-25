@@ -1083,7 +1083,7 @@ print(normality.test(var_mod))
 
 
 **Comment:** 
-There is no evidence of serial correlation at lag = 6. This is cinfimed by both The errors are not homoskedastic and they are also not normally distributed, which contradicts white noise. The errors are therefore not well-behaved and some robust techniques need to be used in order to work with this VAR. This is beacuse hypothesis testing is not valid if the errors are not well-behaved. The p-value for the Portmanteau test is 0.1929 which shows that we fail to reject the Null hypothesis that there is no serial autocorrelation. However, the p-values for the JB-test and the ARCH test on normality and heteroskedastcity are well-below 0.05 which means that we reject the null hypotheses. 
+There is no evidence of serial correlation at lag = 6. This is confirmed by both The errors are not homoskedastic and they are also not normally distributed, which contradicts white noise. The errors are therefore not well-behaved and some robust techniques need to be used in order to work with this VAR. This is beacuse hypothesis testing is not valid if the errors are not well-behaved. The p-value for the Portmanteau test is 0.1929 which shows that we fail to reject the Null hypothesis that there is no serial autocorrelation. However, the p-values for the JB-test and the ARCH test on normality and heteroskedastcity are well-below 0.05 which means that we reject the null hypotheses. 
 
 
 ## Exercise 2.3: Plot the in-sample and out-of-sample forecasts for one of the series
@@ -1149,112 +1149,119 @@ legend("topright",
 par(mfrow = c(1,1))
 
 ``` 
-Panel 1: Actual vs. Fitted CPI
 
-In the first graph we see that the actual and the fitted inflation rate (log difference of CPI) seem to be pretty similar expect for a few months. The early 2015 deflationary episode is not well picked up by the fitted values and so is the inflation around 2008-09 which is unsurprising considering the unexpected financial crisis. The 2015 deflationary episode could be due to the collapse of oil prices globally around that period. 
+### Panel 1: Actual vs. Fitted CPI
 
-Panel 2: CPI 1-Year Ahead Forecast
+We estimate a VAR(6) model to capture the joint dynamics of the system.
+The solid black line shows the observed month-over-month inflation rate in Germany ($\Delta$ log CPI), while the red dashed line represents the fitted values produced by the VAR(6) model over the estimation window. This plot illustrates the in-sample fit—that is, how well the model explains the data it was trained on.
 
-The one-year forecasts show a slight deflationary trend at the start and then a subtle bout of inflation from the summer down to the end. The confidence intervals (the red dotted lines around the blue dashed line) grow over time because the more ahead in the forecast the more uncertainty we have over what could happen and therefore the more unsure our estimates are. However, we need to be careful with these confidence intervals because they are analytic and the non-Gaussian characteristics of our residuals mean that they could be biased. In fact, their validity relies on the Gaussian behaviour of the residuals. The bootstrapped intervals which are not shown here but which we will use later are robust to this issue of heteroskedasticity.  
+Overall, the model captures the general trend and propagation of inflation reasonably well. However, the fitted series is noticeably smoother than the actual data, highlighting the model's inability to match the observed volatility. This limitation is particularly visible during periods of economic disruption, for instance, the 2008–2009 Global Financial Crisis and the 2015 deflationary episode (likely driven by the collapse in global oil prices). These episodes are better understood as nonlinear shocks or “black-swan” events, which simple linear models like VARs are not designed to capture.
+
+Despite this, there is no evidence of persistent over- or underprediction bias. The residuals fluctuate around zero, suggesting the model effectively tracks low-frequency dynamics, even if it fails to capture high-frequency noise and sudden shocks.
+
+
+### Panel 2: CPI 1-Year Ahead Forecast
+
+The right panel shows the out-of-sample forecast. The black line again plots observed MoM inflation, while the blue line represents the 12-month-ahead forecast from the VAR(6) model. The red dashed lines indicate the 95% confidence interval.
+
+As expected, the confidence band widens over the forecast horizon, reflecting the accumulating uncertainty the further we forecast into the future. The point forecast itself is conservative, hovering slightly above zero. This reflects the model’s expectation of stable inflation dynamics in the near term, given past information.
+
+However, caution is warranted. These confidence intervals are analytic, and do not account for the non-Gaussian features of the residuals. As we discuss later, bootstrapped intervals (not shown here) are more robust in the presence of heteroskedasticity and fat tails, which are typical in macroeconomic data.
+
+Importantly, the confidence bands are wide—allowing for outcomes ranging from high deflation (–0.3% MoM ~ 3.7%p.a.) to high inflation (0.5% MoM ~ 6.7% p.a.). Given this wide range, the point forecast offers limited practical guidance. The high degree of uncertainty simply reflects the noisy nature of monthly inflation, and points to the limitations of simple linear VAR models in predictive settings.
+
+In conclusion, the VAR(6) model delivers an acceptable in-sample fit and a plausible forecast under the assumption of linearity and Gaussian errors. However, its shortcomings become evident when faced with real-world volatility and structural breaks. These results underscore the need for richer models, including nonlinear dynamics, time-varying parameters, or conditional heteroskedasticity, particularly when the objective is risk assessment or forecasting under crisis conditions.
+
+
 
 ## Exercise 2.4: Using the Cholesky decomposition, explain the reasoning behind your chosen ordering of variables
 
-```{r exercise 2/4, echo = FALSE}
+```{r exercise 2/4, echo = FALSE, include= FALSE, eval=FALSE}
 
-data_chol <- data_mat[, c("cs","cpi","ip")]
+data_chol <- data_mat[, c("cs", "ip", "cpi")]  # Cholesky ordering: cs → ip → cpi
 var_chol  <- VAR(data_chol, p = p_opt, type = "const")
 summary(var_chol)
 
 ```
-The order we chose is credit spread first, inflation second and industrial production last. This is because the the first thing that responds to any global financial shock is the financial market, i.e. the credit spread. Next, the effects trickle down to affect the inflation rate and from there they hit the industrial production last. The progressively lagged responses that are associated with each series is what motivated us to order the processes this way.
+
+We apply the following Cholesky ordering to our three variables:  
+
+\[
+\Delta \text{Credit Spread} \longrightarrow \Delta \text{Industrial Production} \longrightarrow \Delta \text{CPI}
+\]
+
+This recursive ordering reflects the assumed speed at which each variable responds to exogenous shocks or new information. The structure is consistent with standard economic intuition.
+
+We place **credit spreads** first, since financial markets, under the assumption of at least partial informational efficiency, are expected to react almost instantaneously to new information. As such, we treat changes in credit spreads as contemporaneously exogenous, allowing them to influence the other variables within the same month but not vice versa.
+
+**Industrial production** is ordered second. Real economic activity typically responds to changes in financial conditions with a short delay (within the month), for example through adjustments in investment or inventory decisions. Moreover, industrial production data is often published with a lag, whereas credit spreads reflect real-time market information. This asymmetry in data availability further supports the chosen ordering.
+
+Lastly, we place **consumer prices** at the end. Prices are generally sticky and slow to adjust due to nominal rigidities such as wage contracts, menu costs, or pricing norms. It is therefore plausible to assume that inflation does not contemporaneously affect either credit markets or real activity. However, inflation itself may respond within the same period to shocks in credit spreads and output.
+
+Under this ordering, credit spread shocks are allowed to affect both industrial production and prices contemporaneously; shocks to industrial production can affect prices; but the reverse contemporaneous effects are ruled out. This structure imposes a recursive causal hierarchy that aligns well with both theory and the observed dynamics in the data.
 
 
 ## Exercise 2.5: Show the orthogonalized impulse response functions for your system
 
-```{r five, echo=FALSE, fig.show='hold', fig.height=8, fig.width=6}
+```{r exercise2/5, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
 
-data_chol <- data_mat[, c("cs","cpi","ip")]
+# 1) Re-order data for Cholesky: cs → ip → cpi
+data_chol <- data_mat[, c("cs", "ip", "cpi")]
 
+# 2) Estimate VAR(6)
+var_chol <- VAR(data_chol, p = p_opt, type = "const")
 
-var_chol  <- VAR(data_chol, p = p_opt, type = "const")
+# 3) Orthogonalized IRFs with 95% CI, 12-month horizon
+oirf <- irf(var_chol,
+            impulse  = NULL,
+            response = NULL,
+            n.ahead  = 12,
+            ortho    = TRUE,
+            boot     = TRUE,
+            ci       = 0.95,
+            runs     = 500,
+            seed     = 123) # set a seed for reproductability of bootstrapped confidence bands
 
+# 4) Extract names
+impulses <- names(oirf$irf)
+responses <- colnames(oirf$irf[[1]])
 
-
-oirf      <- irf(var_chol,
-                 impulse  = NULL,   
-                 response = NULL,   
-                 ortho    = TRUE,
-                 boot     = TRUE,
-                 ci       = 0.95,
-                 runs     = 500,)
-
-
-
-
-
-# impulses and responses
-impulses <- names(oirf$irf)               # e.g. c("cs","cpi","ip")
-responses <- colnames( oirf$irf[[1]] )    # same
-
-# set up 3×3 plotting region
+# 5) 3×3 panel of IRFs
 op <- par(mfrow = c(length(responses), length(impulses)),
-          mar   = c(4, 4, 2, 1) + 0.1,
+          mar   = c(4,4,2,1) + 0.1,
           las   = 1)
 
 for(imp in impulses) {
-  # pull out the  matrix for this impulse
-  resp_mat  <- oirf$irf[[imp]]   # rows = horizons 1…n.ahead
+  resp_mat  <- oirf$irf[[imp]]
   lower_mat <- oirf$Lower[[imp]]
   upper_mat <- oirf$Upper[[imp]]
-
-  # how many horizons do we actually have?
   H <- nrow(resp_mat)
-  # build horizon from 0 to H
   h <- 0:H
 
   for(resp in responses) {
-    # prepend the t=0 value (own‐shock magnitude = 1)
-    irf_vec <- c(1, as.numeric(resp_mat[,resp]))
-    lo_vec  <- c(1, as.numeric(lower_mat[,resp]))
-    hi_vec  <- c(1, as.numeric(upper_mat[,resp]))
+    irf_vec <- c(1, resp_mat[, resp])
+    lo_vec  <- c(1, lower_mat[, resp])
+    hi_vec  <- c(1, upper_mat[, resp])
 
     plot(h, irf_vec,
-         type  = "l",
-         lty   = 1,
+         type  = "l", lty = 1,
          xlab  = "Horizon (months)",
          ylab  = resp,
-         main  = paste0("Response of ", resp,
-                        " to a ", imp, " shock"),
-         ylim  = range(c(lo_vec, hi_vec)))
+         main  = paste("Response of", resp, "to", imp, "shock"),
+         ylim  = range(lo_vec, hi_vec))
     lines(h, lo_vec, lty = 2)
     lines(h, hi_vec, lty = 2)
     abline(h = 0, col = "grey60")
   }
 }
 
-
-
-
-
-
-
-
-
 par(op)
+
 
 ```
 
 
 
-Applying the Cholesky ordering we imposed, a shock affects credit spread which then affects inflation which then affects IP: 
-
-Panel 1: We look at the effect of a one SD credit spread shock on each variable. A credit shock increases CS by 0.8 units at t = 1 and then decays quite quickly; at t = 2 it is already at just 0.2 of a standard deviation. After five months the model implies it slightly dips under zero and then reverts back to its mean value of zero. The effect on CPI and IP shock is virtually constant and null. We can therefore say that a one standard deviation shock of CS has no statistically significant effect on CPI and IP. The CI follow the shape of the series throughout and tightly sandwich the series making the plot trustworthy.
-
-Panel 2: We look at the effect of a one standard-deviation shock of CPI. We see that it makes the CS increase slightly by around 0.1 and then it goes up and down slightly period by period before it dissipates towards its mean zero at the end. Its effect on inflation and industrial production are essentially zero. 
-
-Panel 3: Here we see the effect of a one SD shock of industrial production. On the CS we can see that it zig-zags around zero going from positive to negative for about 6 periods before reverting to zero. The effect on inflation and IP is basically null. 
-
-We can conclude that the only variable that is affected by any shock in any variable is the credit spread. This is an interesting finding. It seems like inflation and industrial production is very stable in Germany and that fluctuations are only felt on the financial market. This could be a sign of a stable economy.
 
 
 NB: We used the bootstrapped confidence intervals which means that they are robust under heteroskedasticity. 
@@ -1262,9 +1269,9 @@ NB: We used the bootstrapped confidence intervals which means that they are robu
 
 ## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
 
-```{r six, echo=FALSE, fig.show='hold', fig.height=8, fig.width=6}
+```{r six, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
 # reversed ordering
-data_chol_rev <- data_mat[, c("ip","cpi","cs")]
+data_chol_rev <- data_mat[, c("cpi", "ip", "cs")]  # reverse  ordering: cs → ip → cpi
 var_chol_rev  <- VAR(data_chol_rev, p = p_opt, type = "const")
 oirf_rev      <- irf(var_chol_rev,
                      impulse  = NULL,
@@ -1310,8 +1317,6 @@ for(imp in impulses) {
 }
 
 par(op)
-
-
 
 
 ```
