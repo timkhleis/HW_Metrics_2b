@@ -1052,9 +1052,43 @@ data_mat <- ts(
 
 ## Exercise 2.1: Select the optimal lag length for your multivariate model
 
-```{r exercise2/1, include=FALSE}
+```{r exercise2/1, results='asis'}
+library(vars)
+library(knitr)
+library(kableExtra)
 sel <- VARselect(data_mat, lag.max = 8, type = "const")
 sel$selection
+
+
+
+
+sel_df <- data.frame(
+  Criterion   = names(sel$selection),
+  SelectedLag = as.integer(sel$selection),
+  row.names   = NULL
+)
+
+
+kable(
+  sel_df,
+  format   = "latex",
+  booktabs = TRUE,
+  caption  = "VAR Lag-Order Selection by Information Criteria",
+  label    = "tab:VAR_lag_selection"
+) %>%
+  # first, insert your banner row above everything
+  add_header_above(
+    c("Lag-Order Criteria" = 2),
+    bold       = TRUE,
+    background = "gray!15"
+  ) %>%
+  # then re-declare the real column headers
+  add_header_above(
+    c("Criterion" = 1, "Selected Lag" = 1),
+    bold = TRUE
+  ) %>%
+  # keep the table held in place
+  kable_styling(latex_options = "hold_position")
 ```
 
 **Comment:**  
@@ -1066,24 +1100,92 @@ Among these, we choose lag 3, as selected by the HQ criterion. While this includ
 ## Exercise 2.2: Estimate the model and verify that the residuals satisfy standard properties
 
 ```{r exercise2/2, results='asis'}
+library(vars)
+library(knitr)
+library(kableExtra)
+if (!requireNamespace("tseries", quietly=TRUE)) install.packages("tseries")
+library(tseries)
+
+# Helper to format p-values in inseparable scientific notation
+fmt_sci <- function(x, digits = 2) {
+  if (x == 0 || x < .Machine$double.eps) {
+    return("$<2.2\\times10^{-16}$")
+  }
+  s     <- format(x, scientific = TRUE, digits = digits)
+  parts <- strsplit(s, "e", fixed = TRUE)[[1]]
+  mant  <- parts[1]
+  expn  <- as.integer(parts[2])
+  paste0("$\\mbox{", mant, " \\times 10^{", expn, "}}$")
+}
+
+# 1) Fit VAR
 p_opt   <- sel$selection["AIC(n)"]
+if (is.na(p_opt) || length(p_opt)==0) p_opt <- 1
 var_mod <- VAR(data_mat, p = p_opt, type = "const")
-summary(var_mod)
 
+# 2) Portmanteau test
+pt       <- serial.test(var_mod, lags.pt = 12, type = "PT.asymptotic")
+stat_pt  <- round(pt$serial$statistic[1], 2)
+df_pt    <-    pt$serial$parameter[1]
+pv_pt    <- fmt_sci(pt$serial$p.value[1])
 
-cat("\n--- Portmanteau (no serial correlation) ---\n")
-print(serial.test(var_mod, lags.pt = 12, type = "PT.asymptotic"))
+# 3) ARCH test
+at       <- arch.test(var_mod, lags.multi = 5)
+stat_at  <- round(at$arch.mul$statistic[1], 2)
+df_at    <-    at$arch.mul$parameter[1]
+pv_at    <- fmt_sci(at$arch.mul$p.value[1])
 
-cat("\n--- ARCH (no ARCH effects) ---\n")
-print(arch.test(var_mod, lags.multi = 5))
+# 4) Jarque–Bera on residuals
+resid_vec <- na.omit(as.vector(residuals(var_mod)))
+jb        <- jarque.bera.test(resid_vec)
+stat_nt   <- round(jb$statistic, 2)
+df_nt     <-   jb$parameter
+pv_nt     <- fmt_sci(jb$p.value)
 
-cat("\n--- Normality ---\n")
-print(normality.test(var_mod))
+# 5) Assemble into a 3×3 table (row names only)
+diag_df <- data.frame(
+  chi2   = c(stat_pt, stat_at, stat_nt),
+  DF     = c(df_pt,   df_at,   df_nt),
+  Pvalue = c(pv_pt,   pv_at,   pv_nt),
+  row.names = c(
+    "Portmanteau (no serial corr.)",
+    "ARCH (no ARCH effects)",
+    "Normality (Jarque–Bera)"
+  ),
+  check.names     = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# 6) Emit LaTeX table
+kable(
+  diag_df,
+  format    = "latex",
+  booktabs  = TRUE,
+  align     = c("r","r","l"),
+  col.names = c("Test Statistic", "DF", "P-value"),
+  caption   = "Residual Diagnostics for VAR Model",
+  label     = "tab:var_resid_diagnostics",
+  escape    = FALSE,
+  row.names = TRUE
+) %>%
+  kable_styling(latex_options = "hold_position")
 ```
 
 
 **Comment:** 
-There is no evidence of serial correlation at lag = 6. This is confirmed by both The errors are not homoskedastic and they are also not normally distributed, which contradicts white noise. The errors are therefore not well-behaved and some robust techniques need to be used in order to work with this VAR. This is beacuse hypothesis testing is not valid if the errors are not well-behaved. The p-value for the Portmanteau test is 0.1929 which shows that we fail to reject the Null hypothesis that there is no serial autocorrelation. However, the p-values for the JB-test and the ARCH test on normality and heteroskedastcity are well-below 0.05 which means that we reject the null hypotheses. 
+
+We estimated the VAR(6) model in the standard way in the preceding code chunk. As is common in applied macroeconomic work, we do not report the estimated coefficients here, since our focus lies not on reduced-form parameters but on the dynamic relationships captured by **Impulse Response Functions (IRFs)**, which we will analyze in a later section. (Granger causality could be of interest in some cases, but is not required here and is thus omitted.)
+
+### Redisual diagnostics: 
+
+- **Portmanteau Test for Serial Correlation**  
+  With a p-value of 0.193, we do *not reject* the null of no residual autocorrelation at standard confidence levels. This supports the chosen lag length and confirms that the model captures the joint dynamics of the series sufficiently well. This is a necessary condition for valid inference using IRFs and forecasts.
+
+- **ARCH Test for Conditional Heteroskedasticity**  
+  The null of no ARCH effects is *strongly rejected* (p ≈ 0), indicating time-varying volatility in the residuals. While this does not bias coefficient estimates, it does invalidate inference based on homoskedastic standard errors. This is why we will rely on *bootstrapped IRFs* in the next step.
+
+- **Jarque–Bera Test for Normality**  
+  We also *strongly reject* the null of normally distributed residuals. This likely reflects skewness or heavy tails. While non-normality limits the applicability of asymptotic theory, most procedures we apply (e.g. bootstrapping) are robust to such deviations.
 
 
 ## Exercise 2.3: Plot the in-sample and out-of-sample forecasts for one of the series
@@ -1205,13 +1307,21 @@ Under this ordering, credit spread shocks are allowed to affect both industrial 
 
 ```{r exercise2/5, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
 
-# 1) Re-order data for Cholesky: cs → ip → cpi
-data_chol <- data_mat[, c("cs", "ip", "cpi")]
+# 1) Standardise each series so that 1 unit = 1σ  
+# Rescaling here is very helpful otherwise plots are non-informative 
+data_scaled <- scale(
+  data_mat,
+  center = FALSE,                    # don’t subtract the mean
+  scale  = apply(data_mat, 2, sd)    # divide each column by its sample-std-dev
+)
 
-# 2) Estimate VAR(6)
-var_chol <- VAR(data_chol, p = p_opt, type = "const")
+# 2) Cholesky ordering on the *scaled* data:  
+data_chol  <- data_scaled[, c("cs","ip","cpi")]
 
-# 3) Orthogonalized IRFs with 95% CI, 12-month horizon
+# 3) Estimate VAR(6) on the scaled data  
+var_chol   <- VAR(data_chol, p = p_opt, type = "const")
+
+# 4) Compute orthogonalised IRFs   
 oirf <- irf(var_chol,
             impulse  = NULL,
             response = NULL,
@@ -1222,11 +1332,11 @@ oirf <- irf(var_chol,
             runs     = 500,
             seed     = 123) # set a seed for reproductability of bootstrapped confidence bands
 
-# 4) Extract names
+# 5) Extract names
 impulses <- names(oirf$irf)
 responses <- colnames(oirf$irf[[1]])
 
-# 5) 3×3 panel of IRFs
+# 6) 3×3 panel of IRFs
 op <- par(mfrow = c(length(responses), length(impulses)),
           mar   = c(4,4,2,1) + 0.1,
           las   = 1)
@@ -1261,17 +1371,46 @@ par(op)
 ```
 
 
+#### Response to a 1 SD increase in Credit Spread change
+
+The credit spread (CS) jumps sharply on impact, as expected, and gradually decays back toward zero by month 3–4. This suggests short-lived persistence of shocks in the growth rate of credit spreads.
+
+Industrial production (IP) growth responds notably: it falls sharply over the first two months (peak drop ≈ –0.3 SD), then slowly recovers, returning close to baseline around month 6–8.
+
+Inflation (CPI) growth also dips initially (trough ≈ –0.25 SD at month 2) but recovers more quickly—already by month 3, effects are minor and mostly indistinguishable from zero.
+
+Overall, a one-standard-deviation tightening in financial conditions (wider credit spread) leads to a short-run contraction in both output and prices. Even though the effects on growth rates are transitory, all series are I(1), meaning that in levels, both IP and CPI are pushed onto a lower trajectory. This implies persistent real-side consequences from temporary financial stress.
+
+#### Response to a 1 SD increase in MoM output growth (IP)
+
+Credit spreads exhibit no notable response to an output growth shock—this is largely mechanical due to the Cholesky ordering, which assumes output does not contemporaneously affect spreads.
+
+The response of inflation is modest and delayed, peaking at around +0.1 standard deviations in month 4 before gradually reverting to zero. However, given the width of the confidence bands, we cannot conclude that this effect is statistically distinguishable from zero.
+
+Industrial production growth displays the familiar overshooting pattern: a slight dip below zero in months 1–2, followed by a return to baseline around month 6. This is consistent with a temporary acceleration in output growth that gradually normalizes.
+
+#### Response to a 1 SD increase in MoM inflation (CPI)
+
+Neither credit spreads nor industrial production growth show any meaningful response to a CPI shock. This is consistent with the imposed cholesky ordering.
+
+Even the CPI growth rate itself shows no persistence: it initially overshoots and then quickly reverts. The lack of amplification implies that CPI shocks are largely absorbed without broader macro spillovers.
 
 
+### General Comments
 
-NB: We used the bootstrapped confidence intervals which means that they are robust under heteroskedasticity. 
+Across all responses, impulse effects are modest and short-lived—most return to zero within 6–8 months. Since the VAR was estimated in first differences, this implies the level variables experience small but permanent shifts.
 
+Importantly, the Cholesky ordering (CS → IP → CPI) shapes the results. By placing CS first, we assume financial conditions affect the real and nominal sides contemporaneously, but not the other way around. This assumption helps identify financial shocks cleanly, but alternative orderings could change estimated effects especially for inflation dynamics.
+
+Finally, while the magnitudes are not large (typically around 0.1–0.3 SD), they are meaningful given the monthly frequency. The real-side response to financial shocks is consistent with what we would expect from the literature, even if the estimated effects are not dramatic.
+
+*NB: Since all series are non-stationary, we had to apply first differencing before estimating the VAR. While this ensures statistical validity, it also makes the results somewhat harder to interpret economically, as we are now modeling changes rather than levels. As a result, the dynamics may appear less intuitive or economically rich. In such settings, approaches based on Vector Error Correction Models (VECMs) could offer more informative insights by explicitly capturing long-run relationships between the variables.*
 
 ## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
 
 ```{r six, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
 # reversed ordering
-data_chol_rev <- data_mat[, c("cpi", "ip", "cs")]  # reverse  ordering: cs → ip → cpi
+data_chol_rev <- data_scaled[, c("cpi", "cs", "ip")] 
 var_chol_rev  <- VAR(data_chol_rev, p = p_opt, type = "const")
 oirf_rev      <- irf(var_chol_rev,
                      impulse  = NULL,
@@ -1321,5 +1460,32 @@ par(op)
 
 ```
 
+As an alternative Cholesky ordering, we test **CPI → Credit Spread → Industrial Production**. The idea is that inflation shocks arrive first, prompting an immediate reaction in financial markets. Real activity responds last, adjusting only after observing both the inflation surprise and its impact on credit conditions.
 
-Upon reversing the ordering of the propgation of shocks, i.e. IP first, then inflation and then CS, we can see that the plots look roughly the same. This means that the results are order-invariant and that the impulse responses are robust to the Cholesky ordering. This is good news as it shows that the order in which we run the IRF's is irrelevant, our results are still the same. This makes the economic conclusions more robust. We can therefore conclude that in Germany inflation and industrial production really are unaffected to an infationary shock, an industrial production shock and a CS shock. 
+### Comment on the impact of a shock to MoM CPI growth rate: 
+
+CPI jumps sharply on impact and reverts to baseline within 2–3 months, followed by a small and statistically insignificant rebound.
+Credit spreads respond mildly, with a delayed increase of about +0.1 SD around months 3–5, before fading out.
+Industrial production declines modestly, reaching a trough of –0.15 SD in month 2, then gradually returns to baseline by month 6.
+However, the responses of both credit spreads and industrial production are not statistically different from zero.
+
+**Interpretation:** While the direction of effects aligns with economic intuition, tightening spreads and lower output, none of the responses are statistically significant. We therefore find no strong evidence of meaningful transmission following a CPI shock.
+
+
+### Comment on the impact of a shock to the credit spread change: 
+
+Credit spreads spike on impact and gradually decline over 4–5 months, indicating a persistent tightening in financial conditions.
+CPI falls briefly by about –0.3 SD, but the response is not statistically significant—likely a result of the imposed Cholesky structure.
+Industrial production reacts more strongly, declining to around –0.25 SD by month 4 and remaining below zero throughout most of the horizon.
+
+**Interpretation:** Financial tightening has a clear and persistent effect dampening effect on output growth. Additionally, financial tightening seems somewhat persistent. 
+
+
+### Comment on the impact of an shock to the Industrial-production MoM growt rate 
+
+IP growth shows the standard transitory pattern—sharp increase on impact, then an undershoot and return to baseline by month 6.
+Given the Cholesky ordering, neither CPI nor credit spreads respond significantly.
+
+
+
+
