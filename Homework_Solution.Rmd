@@ -655,11 +655,28 @@ cat(table1_latex)
   \label{fig:first_differences}
 \end{figure}
 ```
-Before doing unit
+
+First before we do the unit root tests we again plot the time series of the integrated processes for inspection and conclude the following about the appropriate setup for unit root tests: 
+
+- **Industrial Production (Δlog IPI):** The series fluctuates around a non-zero constant mean without a trend, justifying the use of drift specifications for ADF/PP and a level null in KPSS.
+
+- **CPI (Δlog CPI):** The differenced price index series also shows no trend, only short-term fluctuations around a stable mean. This supports the same test setup.
+
+- **Credit Spread (Δ):** Although more volatile, especially around 2009, the series remains mean-reverting without trend, making the constant-only specification reasonable.
+
 
 ```{r latextab2, results='asis'}
 cat(table2_latex)
 ```
+
+After doing the tests, we conclude the following: 
+- $\Delta$ **log Industrial Production:** All three tests now clearly point toward stationarity. ADF and PP strongly reject the unit root, while the KPSS test fails to reject level stationarity. This confirms that first differencing was sufficient to achieve stationarity for the industrial production series.
+
+-  $\Delta$ **log CPI:** The test results are consistent and conclusive. Both the ADF and PP tests strongly reject the null of a unit root, and the KPSS test does not reject level stationarity. We therefore conclude that the first-differenced log CPI series is stationary.
+
+- $\Delta$ **Credit Spread:** As with the other two series, all tests align. ADF and PP reject the presence of a unit root by a wide margin, and KPSS indicates no violation of level stationarity. This supports the conclusion that the differenced credit spread series is stationary.
+
+
 
 ## Exercise 1.3: Identify and estimate candidate AR(p) and ARMA(p,q) models using the ACF and PACF. Which model would you choose according to information criteria? Comment the results
 
@@ -838,7 +855,7 @@ model_tables$credit_spread_bic
 model_tables$credit_spread_aic
 ```
 
-**Comment:**\
+**Comment:**
 Inspecting the ACF and PACF plots for the credit spread change (i.e. first difference) series again reveals a somewhat non-standard pattern. The ACF shows a large significant spike at lag 1, followed by additional significant values at lags 2 and 4, as well as a highly negative spike at lag 6. The PACF similarly exhibits a strong positive spike at lag 1 and a large negative spike at lag 6. While not a textbook case, this pattern is most plausibly associated with an AR(1) or possibly an AR(6) process.
 
 Turning to the information criteria, the BIC selects an ARMA(1,0) process, i.e. an AR(1), as the preferred specification. The next-best BIC candidate is an MA(1), but the visual evidence does not support a pure MA process. The AIC, as before, chooses a more complex model—namely, an ARMA(1,6)—which comes with a considerable reduction in AIC relative to the AR(1) model. Nevertheless, for reasons of parsimony and interpretability, we adopt **AR(1)** as our baseline model.
@@ -908,6 +925,9 @@ print(
 
 ## Exercise 1.4: For one of the series, plot the in-sample and out-of-sample forecasts from your best model. Comment the results
 
+We now plot the in-sample and out-of-sample forecasts for the MOM growth of the Industrial Production series. While the MA(3) initially performed best in terms of BIC, MA models are generally less suited for forecasting since they rely on unobservable future shocks. By contrast, AR processes only depend on past information, making them operationally more robust. Given that the AR(3) process performs nearly as well on the BIC and passes key residual diagnostics (Ljung–Box), we proceed with it for this exercise.
+
+
 ```{r exercise_1/4, include = FALSE}
 
 # Step 0: Check if AR(3) process is also suited for forecasting here ----
@@ -932,24 +952,49 @@ ipi_s1 <- window(ipi_ts, end = c(2018, 12)) # training sample
 # Estimate AR 3 Model using arima function
 ar3_s1 <- Arima(ipi_s1, order = c(3, 0, 0))
 
-# Create In-sample fit plot
+#–– Save In-sample fit plot to PDF ––
+pdf("AR3_InSample_Fit.pdf", width = 8, height = 5)
 plot(cbind(ipi_s1, ar3_s1$fitted), plot.type = "s", col = c("black", "red"), lty = 1,
-     main = "AR(3) In-Sample Fit – Δlog Industrial Production",
+     main = "AR(3) In-Sample Fit – MOM change Industrial Production in %",
      ylab = "Δlog IPI", xlab = "Time")
 legend("topright", legend = c("Actual", "In-sample fit (AR(3))"),
        col = c("black", "red"), lty = 1, bty = "n")
+dev.off()
 
-# Create out of sample forecast 
+#–– Save Out-of-sample forecast plot to PDF ––
 ar3_s1_fc <- forecast(object = ipi_s1, model = ar3_s1, h = 12)
-
-# Out of sample plot 
-plot(ar3_s1_fc, main = "AR(3) Out-of-Sample Forecast – Δlog IPI",
+pdf("AR3_OutSample_Forecast.pdf", width = 8, height = 5)
+plot(ar3_s1_fc, main = "AR(3) Out-of-Sample Forecast – MOM change in Industrial Production in %",
      ylab = "Δlog IPI", xlab = "Time")
-
+dev.off()
 
 ```
 
-*Comment on the Results* \* We will no plot the in-sample and out-of sample forecasts for the Industrial Production time series, remember initially the best performing model was an MA(3) process, however MA processes are generally worse than AR(p) processes for forecasting (add a reason here) \* So to begin this exercise we will check if the AR(3) process is also suited for modelling here given the residual diagnostics, we see that we pass the Ljung Box test and fail the Jarque Bera Test --\> again this is good enough for us to go also from AIC and BIC table we know the AR(3) process performs only slightly worse on the BIC than the MA(3) process
+\begin{figure}[H]
+  \centering
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{AR3_InSample_Fit.pdf}
+    \caption*{In-Sample Fit – AR(3)}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{AR3_OutSample_Forecast.pdf}
+    \caption*{Out-of-Sample Forecast – AR(3)}
+  \end{minipage}
+\end{figure}
+
+## Comment on the Plots: 
+
+**In-Sample Fit**  
+The first plot compares the AR(3) model’s in-sample predictions (red) with the actual data (black). Overall, the model captures the general direction and persistence in $\Delta \log$ IPI reasonably well. However, the fit is clearly smoother than the actual series, particularly drastic shocks, around the 2009 GFC, are not fully reflected. This is expected: linear autoregressive models tend to average over past fluctuations and are typically not well-suited to capture crisis dynamics. Still, the model offers a decent approximation of the underlying process.
+
+**Out-of-Sample Forecast**  
+The second plot presents the out-of-sample forecast with confidence intervals. The forecast shows some minor variation early on but quickly reverts to a constant mean, as expected for a stationary AR(p) process. Since we're using an AR(3) model for a 12-month horizon, real input data beyond the first few periods becomes unavailable, limiting dynamic response. The wide confidence bands indicate high uncertainty, which is not surprising given the volatility of the series. In short, the model suggests short-term stability but lacks precision for medium- or long-run projections.
+
+**Conclusion**  
+The AR(3) model provides a reasonable short-term baseline, capturing autocorrelation but smoothing over extreme movements. For more accurate or structural insights, models with additional indicators (e.g., VAR) would be more appropriate. To better understand crisis episodes, nonlinear time series methods should be considered, as linear models struggle to capture such dynamics.
 
 # Exercise 2 - : Multivariate analysis
 
