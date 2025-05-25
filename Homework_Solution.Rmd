@@ -226,7 +226,7 @@ Before turning to the first plot, we briefly introduce the nature and constructi
 
 The plot shows that the credit spread generally fluctuates within a 3–5 percentage point band during stable periods. Sharp spikes in the spread coincide with major episodes of financial turmoil. The elevated spread in 2001–2003, peaking around 15%, reflects heightened risk perceptions during the burst of the "dot-com-bubble" and the post-9/11 recession. The most pronounced increase occurs during the global financial crisis (2007–2009), with a peak above 20% following the collapse of the US-Bank Lehman Brothers in September 2008. The final surge in our time series between 2011 and 2013 reflects the European sovereign debt crisis.
 
-However, it is important to note that the index only includes high-yield corporate bonds issued by firms domiciled in countries with investment-grade sovereign ratings, such as Germany. As a result, it does not fully capture the sharp rise in credit spreads for corporations based in fiscally less stable countries like Greece and Portugal, both of which lost investment-grade status in 2010. The observed increase in spreads during the European debt crisis thus primarily reflects broader market risk aversion and heightened perceptions of credit risk among issuers in core Eurozone economies—particularly those expected to act as lenders of last resort. For our analysis this is exactly what we want to focus on.
+However, it is important to note that the index only includes high-yield corporate bonds issued by firms domiciled in countries with investment-grade sovereign ratings, such as Germany. The observed increase in spreads during the European debt crisis thus primarily reflects broader market risk aversion and heightened perceptions of credit risk for core Eurozone Countries.
 
 For our time series analysis, visually inspecting the series we see the series exhibits strong mean-reversion around a constant level and no visible trend, suggesting weak stationarity.
 
@@ -234,15 +234,13 @@ For our time series analysis, visually inspecting the series we see the series e
 
 The second plot shows Germany's industrial production index (excluding construction) from 2000 to 2019, expressed in real terms with 2015 as the base year. We can divide the evolution of the series into several key phases. From 2003 to mid-2008, the index displays a steady and almost linear upward trend, reflecting sustained industrial growth. This is followed by a sharp contraction of over 20% during the global financial crisis. The recovery begins in early 2009 but remains gradual and volatile. Pre-crisis output levels are only reached again by late 2015, an astounding 7 years after the GFC began. After 2017, the series begins to decline again, with little evidence of structural growth, indicating a potential stagnation of the German industrial sector in the face of increasing global uncertainty.
 
-This time series effectively captures the cyclical and structural dynamics of Germany’s export-oriented manufacturing economy. The dramatic collapse in 2008–2009 underscores Germany's exposure to global trade disruptions during the financial crisis. The sluggish recovery and cyclical fluctuations reflect subsequent headwinds, including the euro area sovereign debt crisis (2011–2012) and the China-led global slowdown in 2015—particularly relevant given China’s role as a major importer of German industrial goods. The post-2017 downturn likely stems from declining external demand and rising global trade tensions.
-
 Visual inspection suggests that the series is clearly non-stationary, characterized by both a deterministic trend and a shift in level post GFC. To obtain a stationary series, we take the first difference of the outcome. Additionally, we will use a logarithmic transformation as log-differences can be interpreted as month-over-month growth rates in industrial production.
 
 **Consumer Price Index**
 
 The third plot show the harmonized consumer price index (HICP) for Germany from 2000 to 2019, with 2015 as the base year. Over the entire sample period, the series exhibits a smooth and almost linear upward trend, increasing from approximately 80 to 105. Assuming linearity, this corresponds to an average annual growth rate of roughly 1.25 percentage points, which is consistent with the broader macroeconomic environment of low and stable inflation during this time period. Notably, the sample ends just before two major inflationary shocks: the COVID-19 pandemic and the 2022 energy crisis triggered by Russia’s invasion of Ukraine—both of which led to significant price pressures in subsequent years.
 
-Throughout the period shown, the index displays no signs of mean reversion, and inflation appears largely unaffected by the external shocks visible in the other two series. Based on visual inspection, the series clearly exhibits a deterministic trend component. Thus, it may still be trend-stationary. To determine whether the process is stationary or not, we will conduct formal unit root tests in the next exercise, which will provide more robust evidence regarding the stationarity properties of the series. If we conclude, at least as a first step, that the series is non-stationary, we will apply log differencing, consistent with our approach to the IPI series. This transformation may yield a stationary process and additionally offers a smooth interpretation as month-over-month inflation rates.
+Throughout the period shown, the index displays no signs of mean reversion, and inflation appears largely unaffected by the external shocks visible in the other two series. Based on visual inspection, the series clearly exhibits a deterministic trend component.
 
 ## Exercise 1.2: Conduct unit root and stationarity tests for each series
 
@@ -645,7 +643,7 @@ table2_latex <- table2_data %>%
 cat(table1_latex)
 ```
 
-**Log Industrial Production** We obtained mixed results regarding the stationarity of the log industrial production series. Both the ADF and PP tests failed to reject a unit root at standard confidence levels, indicatin non-stationarity. However, the KPSS test indicated stationarity at the 1% and 5% levels, though it was borderline at 10%. Given this conflicting evidence and the general tendency to conclude non-stationarity in such cases, we lean towards the safer option and conclude that the series is non-stationary, requiring first-order integration.
+**Log Industrial Production** We obtain mixed results regarding the stationarity of the log industrial production series. Both the ADF and PP tests failed to reject a unit root at standard confidence levels, indicating non-stationarity. However, the KPSS test indicates stationarity at the 1% and 5% levels, though it was borderline at 10%. Given this conflicting evidence and the general tendency to conclude non-stationarity in such cases, we lean towards the safer option and conclude that the series is non-stationary, requiring first-order integration.
 
 **Log CPI** Both the ADF (–1.537) and PP (–1.564) test statistics are far above the critical values, confirming failure to reject the unit root. The KPSS test statistic (0.83) strongly exceeds all critical values, clearly rejecting trend stationarity. Together, the tests provide robust evidence that CPI (log) is non-stationary in levels, which aligns with expectations for price indices.
 
@@ -712,11 +710,15 @@ p_ipi_pacf <- ggPacf(industrial$dlog_value, lag.max = 20) + labs(title="PACF: De
 (ipi_acf <- p_ipi_acf / p_ipi_pacf) + plot_layout(guides="collect")
 ggsave("ipi_acf_grid.pdf", ipi_acf, width = 8, height = 3.5)
 
+col_ipi    <- p_ipi_acf / p_ipi_pacf
+
 #### B. CPI (Dif log CPI)
 p_cpi_acf  <- ggAcf(cpi$dlog_value, lag.max = 20) + labs(title="ACF: Delta log(CPI)")
 p_cpi_pacf <- ggPacf(cpi$dlog_value, lag.max = 20) + labs(title="PACF: Delta log(CPI)")
 (cpi_acf <- p_cpi_acf / p_cpi_pacf) + plot_layout(guides="collect")
 ggsave("cpi_acf_grid.pdf", cpi_acf, width = 8, height = 3.5)
+
+col_cpi    <- p_cpi_acf / p_cpi_pacf
 
 ### C. Credit Spread (Dif CS)
 p_cs_acf  <- ggAcf(credit_spread$cs_d1, lag.max = 20) + labs(title="ACF: Delta Credit Spread")
@@ -724,6 +726,14 @@ p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Delta
 (cs_acf <- p_cs_acf / p_cs_pacf) + plot_layout(guides="collect")
 ggsave("cs_acf_grid.pdf",  cs_acf,  width = 8, height = 3.5)
 
+col_cs    <- p_cs_acf / p_cs_pacf
+
+# Combine all three columns next to each other:
+combined_acf_pacf <- col_ipi | col_cpi | col_cs
+combined_acf_pacf + plot_layout(guides = "collect")
+
+# (optional) save to file:
+ggsave("all_three_acf_pacf.pdf", combined_acf_pacf, width = 12, height = 4)
 
 #### Results
 # IPI: AR(3)
@@ -838,44 +848,11 @@ for (nm in names(all_models)) {
 
 ```
 
-### Industrial Production Index:
+### ACF, PACF Plots and Residual Diagnostics 
 
 ```{r, results='asis'}
-knitr::include_graphics("ipi_acf_grid.pdf")
+knitr::include_graphics("all_three_acf_pacf.pdf")
 ```
-
-**Comment:** Inspecting the PACF plot, the pattern appears somewhat irregular. We observe a significant spike at lag 1, a non-significant lag 2, followed by another significant spike at lag 3. This suggests an autoregressive process of order between 1 and 3. As a conservative choice, we initially lean toward an AR(3) specification. This is further supported by the ranking of optimal candidates by the Bayesian Information Criterion (BIC), where the AR(3) model appears as the fourth-best candidate, performing only marginally worse than the top models.
-
-Based on the information criteria, the BIC selects an MA(3) process as the optimal model, while the AIC favors a much more complex ARMA(5,7) specification. *(Reminder: since we are modeling the I(1) series, this corresponds to an ARIMA(5,1,7) on the original series.)* Once again, this illustrates AIC's tendency to prefer more heavily parameterized models that were not clearly supported by the ACF or PACF plots. We therefore select the MA(3) model as our preferred specification—it performs nearly as well under AIC and is more parsimonious. The MA(3) Model was also chosen by the Hyndman-Khandakar-Algorithm when optimizing with respect to the BIC.
-
-Residual diagnostics (see final table in Exercise 1.3) confirm that the MA(3) model is well-specified. The Ljung–Box test fails to reject the null hypothesis of no autocorrelation. While the Jarque–Bera test rejects normality, this is common in empirical macroeconomic applications and not a major concern, especially since we are interested in forecasting and not inference.
-
-### Consumer Price Index:
-
-```{r, results='asis'}
-knitr::include_graphics("cpi_acf_grid.pdf")
-```
-
-**Comment:** Looking at the MoM inflation rate (log-differenced CPI), the ACF and PACF plots show no significant autocorrelation at any lag, as all values remain well within the confidence bands. Based on visual inspection alone, this pattern is most consistent with a simple white noise process.
-
-This impression is confirmed by the BIC, which selects an ARMA(0,0) model, i.e. pure white noise. The AIC, on the other hand, again favors a more complex model *(in this case, an ARMA(2,2) process)*. However, even under AIC, the improvement in fit relative to ARMA(0,0) is marginal and does not justify the added complexity, especially given the lack of support from the correlogram.
-
-Turning to residual diagnostics, we fail to reject both null hypotheses of the Ljung–Box test (no autocorrelation) and the Jarque–Bera test (normality) for the white noise model. These results provide further evidence for our initial conclusion that the CPI time series—after differencing—can reasonably be modeled as a white noise process.
-
-### Credit Spread Index:
-
-```{r, results='asis'}
-knitr::include_graphics("cs_acf_grid.pdf")
-```
-
-**Comment:**
-Inspecting the ACF and PACF plots for the credit spread change (i.e. first difference) series again reveals a somewhat non-standard pattern. The ACF shows a large significant spike at lag 1, followed by additional significant values at lags 2 and 4, as well as a highly negative spike at lag 6. The PACF similarly exhibits a strong positive spike at lag 1 and a large negative spike at lag 6. While not a textbook case, this pattern is most plausibly associated with an AR(1) or possibly an AR(6) process.
-
-Turning to the information criteria, the BIC selects an ARMA(1,0) process, i.e. an AR(1), as the preferred specification. The next-best BIC candidate is an MA(1), but the visual evidence does not support a pure MA process. The AIC, as before, chooses a more complex model—namely, an ARMA(1,6)—which comes with a considerable reduction in AIC relative to the AR(1) model. Nevertheless, for reasons of parsimony and interpretability, we adopt **AR(1)** as our baseline model.
-
-Finally, examining the residual diagnostics, we find that the AR(1) model passes the Ljung–Box test (i.e., we fail to reject the null of no autocorrelation), while the Jarque–Bera test again rejects normality, typical for Macroeconometrics. Based on these results, we conclude that the AR(1) specification sufficiently captures the serial dependence in the credit spread series.
-
-### Residual Diagnostics:
 
 ```{r diagnostic_tables, results='asis'}
 #–– Optional: map internal names to pretty labels ––
@@ -932,9 +909,39 @@ print(
   include.rownames      = FALSE,
   booktabs              = TRUE,
   caption.placement     = "top",
-  sanitize.text.function = identity
+  sanitize.text.function = identity, 
+  comment                = FALSE
 )
 ```
+
+### Industrial Production Index:
+
+**Comment:** Inspecting the PACF plot, the pattern appears somewhat irregular. We observe a significant spike at lag 1, a non-significant lag 2, followed by another significant spike at lag 3. This suggests an autoregressive process of order between 1 and 3. As a conservative choice, we initially lean toward an AR(3) specification. This is further supported by the ranking of optimal candidates by the Bayesian Information Criterion (BIC), where the AR(3) model appears as the fourth-best candidate, performing only marginally worse than the top models.
+
+Based on the information criteria, the BIC selects an MA(3) process as the optimal model, while the AIC favors a much more complex ARMA(5,7) specification. *(Reminder: since we are modeling the I(1) series, this corresponds to an ARIMA(5,1,7) on the original series.)* Once again, this illustrates AIC's tendency to prefer more heavily parameterized models that were not clearly supported by the ACF or PACF plots. We therefore select the MA(3) model as our preferred specification—it performs nearly as well under AIC and is more parsimonious. The MA(3) Model was also chosen by the Hyndman-Khandakar-Algorithm when optimizing with respect to the BIC.
+
+Residual diagnostics (see final table in Exercise 1.3) confirm that the MA(3) model is well-specified. The Ljung–Box test fails to reject the null hypothesis of no autocorrelation. While the Jarque–Bera test rejects normality, this is common in empirical macroeconomic applications and not a major concern, especially since we are interested in forecasting and not inference.
+
+### Consumer Price Index:
+
+**Comment:** Looking at the MoM inflation rate (log-differenced CPI), the ACF and PACF plots show no significant autocorrelation at any lag, as all values remain well within the confidence bands. Based on visual inspection alone, this pattern is most consistent with a simple white noise process.
+
+This impression is confirmed by the BIC, which selects an ARMA(0,0) model, i.e. pure white noise. The AIC, on the other hand, again favors a more complex model *(in this case, an ARMA(2,2) process)*. However, even under AIC, the improvement in fit relative to ARMA(0,0) is marginal and does not justify the added complexity, especially given the lack of support from the correlogram.
+
+Turning to residual diagnostics, we fail to reject both null hypotheses of the Ljung–Box test (no autocorrelation) and the Jarque–Bera test (normality) for the white noise model. These results provide further evidence for our initial conclusion that the CPI time series—after differencing—can reasonably be modeled as a white noise process.
+
+### Credit Spread Index:
+
+**Comment:**
+Inspecting the ACF and PACF plots for the credit spread change (i.e. first difference) series again reveals a somewhat non-standard pattern. The ACF shows a large significant spike at lag 1, followed by additional significant values at lags 2 and 4, as well as a highly negative spike at lag 6. The PACF similarly exhibits a strong positive spike at lag 1 and a large negative spike at lag 6. While not a textbook case, this pattern is most plausibly associated with an AR(1) or possibly an AR(6) process.
+
+Turning to the information criteria, the BIC selects an ARMA(1,0) process, i.e. an AR(1), as the preferred specification. The next-best BIC candidate is an MA(1), but the visual evidence does not support a pure MA process. The AIC, as before, chooses a more complex model—namely, an ARMA(1,6)—which comes with a considerable reduction in AIC relative to the AR(1) model. Nevertheless, for reasons of parsimony and interpretability, we adopt **AR(1)** as our baseline model.
+
+Finally, examining the residual diagnostics, we find that the AR(1) model passes the Ljung–Box test (i.e., we fail to reject the null of no autocorrelation), while the Jarque–Bera test again rejects normality, typical for Macroeconometrics. Based on these results, we conclude that the AR(1) specification sufficiently captures the serial dependence in the credit spread series.
+
+### Residual Diagnostics:
+
+
 
 ## Exercise 1.4: For one of the series, plot the in-sample and out-of-sample forecasts from your best model. Comment the results
 
@@ -1278,9 +1285,6 @@ However, caution is warranted. These confidence intervals are analytic, and do n
 
 Importantly, the confidence bands are wide—allowing for outcomes ranging from high deflation (–0.3% MoM ~ 3.7%p.a.) to high inflation (0.5% MoM ~ 6.7% p.a.). Given this wide range, the point forecast offers limited practical guidance. The high degree of uncertainty simply reflects the noisy nature of monthly inflation, and points to the limitations of simple linear VAR models in predictive settings.
 
-In conclusion, the VAR(6) model delivers an acceptable in-sample fit and a plausible forecast under the assumption of linearity and Gaussian errors. However, its shortcomings become evident when faced with real-world volatility and structural breaks. These results underscore the need for richer models, including nonlinear dynamics, time-varying parameters, or conditional heteroskedasticity, particularly when the objective is risk assessment or forecasting under crisis conditions.
-
-
 
 ## Exercise 2.4: Using the Cholesky decomposition, explain the reasoning behind your chosen ordering of variables
 
@@ -1304,9 +1308,6 @@ We place **credit spreads** first, since financial markets, under the assumption
 **Industrial production** is ordered second. Real economic activity typically responds to changes in financial conditions with a short delay (within the month), for example through adjustments in investment or inventory decisions. Moreover, industrial production data is often published with a lag, whereas credit spreads reflect real-time market information. This asymmetry in data availability further supports the chosen ordering.
 
 Lastly, we place **consumer prices** at the end. Prices are generally sticky and slow to adjust due to nominal rigidities such as wage contracts, menu costs, or pricing norms. It is therefore plausible to assume that inflation does not contemporaneously affect either credit markets or real activity. However, inflation itself may respond within the same period to shocks in credit spreads and output.
-
-Under this ordering, credit spread shocks are allowed to affect both industrial production and prices contemporaneously; shocks to industrial production can affect prices; but the reverse contemporaneous effects are ruled out. This structure imposes a recursive causal hierarchy that aligns well with both theory and the observed dynamics in the data.
-
 
 ## Exercise 2.5: Show the orthogonalized impulse response functions for your system
 
@@ -1409,7 +1410,7 @@ Importantly, the Cholesky ordering (CS → IP → CPI) shapes the results. By pl
 
 Finally, while the magnitudes are not large (typically around 0.1–0.3 SD), they are meaningful given the monthly frequency. The real-side response to financial shocks is consistent with what we would expect from the literature, even if the estimated effects are not dramatic.
 
-*NB: Since all series are non-stationary, we had to apply first differencing before estimating the VAR. While this ensures statistical validity, it also makes the results somewhat harder to interpret economically, as we are now modeling changes rather than levels. In such settings, approaches based on Vector Error Correction Models (VECMs) could offer more informative insights.*
+*NB: Since all series are non-stationary, we had to apply first differencing before estimating the VAR. While this ensures statistical validity, it also makes the results somewhat harder to interpret economically.*
 
 ## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
 
@@ -1488,8 +1489,7 @@ Industrial production reacts more strongly, declining to around –0.25 SD by mo
 
 ### Comment on the impact of an shock to the Industrial-production MoM growt rate 
 
-IP growth shows the standard transitory pattern—sharp increase on impact, then an undershoot and return to baseline by month 6.
-Given the Cholesky ordering, neither CPI nor credit spreads respond significantly.
+IP growth shows the standard transitory pattern—sharp increase on impact, then an undershoot and return to baseline by month 6. Given the Cholesky ordering, neither CPI nor credit spreads respond significantly.
 
 
 
