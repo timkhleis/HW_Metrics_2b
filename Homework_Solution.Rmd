@@ -25,7 +25,7 @@ header-includes:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r setup_and_data, include=FALSE}
@@ -139,7 +139,7 @@ plot_credit_spread <- ggplot(data_credit, aes(x = date, y = value)) +
     expand      = c(0.01, 0.01)
   ) +
   scale_y_continuous(
-    name   = "Credit Spread (Percentage Points)",
+    name   = "Spread in perc. points",
     breaks = create_nice_breaks(min(data_credit$value), max(data_credit$value), n = 6) # More breaks
   ) +
   labs(
@@ -166,7 +166,7 @@ plot_industrial_production <- ggplot(data_industrial, aes(x = date, y = value)) 
     expand      = c(0.01, 0.01)
   ) +
   scale_y_continuous(
-    name   = "Index 2015=100",
+    name   = "IPI (Index 2015=100)",
     breaks = create_nice_breaks(min(data_industrial$value), max(data_industrial$value), n = 6)
   ) +
   labs(
@@ -193,7 +193,7 @@ plot_cpi <- ggplot(data_cpi, aes(x = date, y = value)) +
     expand      = c(0.01, 0.01)
   ) +
   scale_y_continuous(
-    name   = "Germany: Harmonized CPI (Index 2015=100)",
+    name   = "Harmonized CPI (2015=100)",
     breaks = create_nice_breaks(min(data_cpi$value), max(data_cpi$value), n = 6)
   ) +
   labs(
@@ -210,11 +210,11 @@ ggsave("cpi_plot.pdf", plot_cpi, width = 7, height = 5)
 
 # Creating a Combined Plot 
 combined_plot <- grid.arrange(plot_credit_spread, plot_industrial_production, plot_cpi, ncol = 1)
-ggsave("exercise_1_combined_plot.pdf", combined_plot, width = 8, height = 12)
+ggsave("exercise_1_combined_plot.pdf", combined_plot, width = 8, height = 7)
 
 ```
 
-```{r exercise_1_graphcis, results='asis'}
+```{r exercise_1_graphcis, results='asis', fig.width=8, fig.height=10}
 knitr::include_graphics("exercise_1_combined_plot.pdf")
 ```
 
@@ -222,7 +222,7 @@ knitr::include_graphics("exercise_1_combined_plot.pdf")
 
 **Credit Spread Plot**
 
-Before turning to the first plot, we briefly introduce the nature and construction of this time series, as it is less conventional than the other two, which most Economists should be familiar with. The ICE BofA Euro High Yield Index Option-Adjusted Spread (OAS) measures the additional yield that investors require, over the euro area risk-free rate, to hold euro-denominated corporate bonds rated below investment grade (i.e., lower than BB by Fitch or Ba1 by Moody’s). Only publicly issued bonds with an outstanding volume above €100 million from issuers domiciled in countries with investment-grade sovereign ratings are included. The spread is adjusted for embedded options and aggregated using market-capitalization weighting. In "less technical" terms, the series captures the risk premium compared to the spot Treasury curve associated with holding Eurozone "junk" bonds, reflecting both credit and liquidity risk.
+Before turning to the first plot, we briefly introduce the nature and construction of this time series, as it is less conventional than the other two, which most Economists should be familiar with. The ICE BofA Euro High Yield Index Option-Adjusted Spread (OAS) measures the additional risk premium that investors require, over the spot treasury curve, to hold euro-denominated corporate bonds rated below investment grade (i.e., lower than BB by Fitch or Ba1 by Moody’s).
 
 The plot shows that the credit spread generally fluctuates within a 3–5 percentage point band during stable periods. Sharp spikes in the spread coincide with major episodes of financial turmoil. The elevated spread in 2001–2003, peaking around 15%, reflects heightened risk perceptions during the burst of the "dot-com-bubble" and the post-9/11 recession. The most pronounced increase occurs during the global financial crisis (2007–2009), with a peak above 20% following the collapse of the US-Bank Lehman Brothers in September 2008. The final surge in our time series between 2011 and 2013 reflects the European sovereign debt crisis.
 
@@ -248,9 +248,9 @@ Throughout the period shown, the index displays no signs of mean reversion, and 
 
 Given our previous results, we now propose to conduct unit root and stationarity tests in the following order:
 
-1)  We log-transform CPI and IPI for two reasons. First, the underlying trends in these series appear to be multiplicative rather than linear. Taking logs allows us to linearize the relationship, which is necessary to apply linear time series models such as AR or ARMA. Second, since we will later difference the series to achieve stationarity (based on our earlier visual inspection suggesting I(1) behavior), the log-differenced series can be conveniently interpreted as month-over-month growth rates.
+1)  We log-transform CPI and IPI to linearize the relationships and for better interpretability (log differences can be interpreted as MoM growth rates)
 
-2)  We proceed by conducting standard unit root and stationarity tests in the following order: – First, we apply the ADF, ERS/DF_GLS, Phillips-Perron, and KPSS tests to the original (non-differenced) series to check for stationarity of the original series – If these tests suggest non-stationarity, we continue by applying same tests (altough with possibly different trend specifications) to the first-differenced series. If those are found to be stationary, this confirms that the series are integrated of order one, I(1)
+2)  We proceed by conducting standard unit root and stationarity tests in the following order: First, apply the tests to the original (non-differenced). If these tests suggest non-stationarity, we continue with integration until we find stationary series.
 
 ```{r exercise_1/2, include=FALSE}
 
@@ -572,13 +572,13 @@ table1_latex <- table1_data %>%
     align     = c("l","l","l",rep("c",4)),
     escape    = FALSE
   ) %>%
-  kable_styling(latex_options = c("hold_position","scale_down")) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
   pack_rows("Industrial Production (log)", 1, 3) %>%
   pack_rows("CPI (log)", 5, 7) %>%
   pack_rows("Credit Spread", 9, 11) %>%
   footnote(
-    general = c("ADF & PP: H₀ = unit root present",
-                "KPSS:   H₀ = series stationary"),
+    general = c("ADF and PP: H0 = unit root present",
+                "KPSS:   H0 = series stationary"),
     general_title = "Notes:",
     escape = FALSE
   )
@@ -626,13 +626,13 @@ table2_latex <- table2_data %>%
     align     = c("l","l","l",rep("c",4)),
     escape    = FALSE
   ) %>%
-  kable_styling(latex_options = c("hold_position","scale_down")) %>%
-  pack_rows("$\\Delta$ Industrial Production (log)", 1, 3) %>%
-  pack_rows("$\\Delta$ CPI (log)", 5, 7) %>%
-  pack_rows("$\\Delta$ Credit Spread", 9, 11) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+  pack_rows("Delta Industrial Production (log)", 1, 3) %>%
+  pack_rows("Delta CPI (log)", 5, 7) %>%
+  pack_rows("Delta Credit Spread", 9, 11) %>%
   footnote(
-    general = c("ADF & PP: H₀ = unit root present",
-                "KPSS:   H₀ = series stationary",
+    general = c("ADF and PP: H0 = unit root present",
+                "KPSS:   H0 = series stationary",
                 "$\\Delta$ denotes first difference"),
     general_title = "Notes:",
     escape = FALSE
@@ -641,7 +641,7 @@ table2_latex <- table2_data %>%
 
 ### Level Series without integration:
 
-```{r latextab1, results='asis'}
+```{r latextab1, results='asis', echo=FALSE, message=FALSE}
 cat(table1_latex)
 ```
 
@@ -699,7 +699,7 @@ After doing the tests, we conclude the following:
 
 ## Exercise 1.3: Identify and estimate candidate AR(p) and ARMA(p,q) models using the ACF and PACF. Which model would you choose according to information criteria? Comment the results
 
-```{r exercise_1/3, include=FALSE}
+```{r exercise_1/3, include=FALSE, echo=FALSE, message=FALSE}
 
 # Exercise 1.3 Identify and estimate candidate AR(p) and ARMA(p,q) models using ACF and PACF 
 ## Since we already saw that the we need to take First Differences for stationarity use the I(1) of the series for ACF and PACF Plots
@@ -710,19 +710,19 @@ After doing the tests, we conclude the following:
 p_ipi_acf  <- ggAcf(industrial$dlog_value, lag.max = 20) + labs(title="ACF: Delta log(Industrial Production Index)")
 p_ipi_pacf <- ggPacf(industrial$dlog_value, lag.max = 20) + labs(title="PACF: Delta log(Industrial Production Index)")
 (ipi_acf <- p_ipi_acf / p_ipi_pacf) + plot_layout(guides="collect")
-ggsave("ipi_acf_grid.pdf", ipi_acf, width = 8, height = 4)
+ggsave("ipi_acf_grid.pdf", ipi_acf, width = 8, height = 3.5)
 
 #### B. CPI (Dif log CPI)
 p_cpi_acf  <- ggAcf(cpi$dlog_value, lag.max = 20) + labs(title="ACF: Delta log(CPI)")
 p_cpi_pacf <- ggPacf(cpi$dlog_value, lag.max = 20) + labs(title="PACF: Delta log(CPI)")
 (cpi_acf <- p_cpi_acf / p_cpi_pacf) + plot_layout(guides="collect")
-ggsave("cpi_acf_grid.pdf", cpi_acf, width = 8, height = 4)
+ggsave("cpi_acf_grid.pdf", cpi_acf, width = 8, height = 3.5)
 
 ### C. Credit Spread (Dif CS)
 p_cs_acf  <- ggAcf(credit_spread$cs_d1, lag.max = 20) + labs(title="ACF: Delta Credit Spread")
 p_cs_pacf <- ggPacf(credit_spread$cs_d1, lag.max = 20) + labs(title="PACF: Delta Credit Spread")
 (cs_acf <- p_cs_acf / p_cs_pacf) + plot_layout(guides="collect")
-ggsave("cs_acf_grid.pdf",  cs_acf,  width = 8, height = 4)
+ggsave("cs_acf_grid.pdf",  cs_acf,  width = 8, height = 3.5)
 
 
 #### Results
@@ -842,8 +842,6 @@ for (nm in names(all_models)) {
 
 ```{r, results='asis'}
 knitr::include_graphics("ipi_acf_grid.pdf")
-cat(model_tables$industrial_bic) # Use cat() to explicitly print the string
-cat(model_tables$industrial_aic) # Use cat() to explicitly print the string
 ```
 
 **Comment:** Inspecting the PACF plot, the pattern appears somewhat irregular. We observe a significant spike at lag 1, a non-significant lag 2, followed by another significant spike at lag 3. This suggests an autoregressive process of order between 1 and 3. As a conservative choice, we initially lean toward an AR(3) specification. This is further supported by the ranking of optimal candidates by the Bayesian Information Criterion (BIC), where the AR(3) model appears as the fourth-best candidate, performing only marginally worse than the top models.
@@ -856,14 +854,6 @@ Residual diagnostics (see final table in Exercise 1.3) confirm that the MA(3) mo
 
 ```{r, results='asis'}
 knitr::include_graphics("cpi_acf_grid.pdf")
-
-# Convert BIC table to LaTeX and print
-cat(knitr::kable(model_tables$core_infl_bic, format = "latex", booktabs = TRUE, caption = "Core Inflation BIC Table"))
-cat("\n\n") # Add some vertical space between the tables
-
-# Convert AIC table to LaTeX and print
-cat(knitr::kable(model_tables$core_infl_aic, format = "latex", booktabs = TRUE, caption = "Core Inflation AIC Table"))
-
 ```
 
 **Comment:** Looking at the MoM inflation rate (log-differenced CPI), the ACF and PACF plots show no significant autocorrelation at any lag, as all values remain well within the confidence bands. Based on visual inspection alone, this pattern is most consistent with a simple white noise process.
@@ -876,15 +866,6 @@ Turning to residual diagnostics, we fail to reject both null hypotheses of the L
 
 ```{r, results='asis'}
 knitr::include_graphics("cs_acf_grid.pdf")
-
-# Convert BIC table to LaTeX and print
-cat(knitr::kable(model_tables$credit_spread_bic, format = "latex", booktabs = TRUE, caption = "Credit Spread BIC Table"))
-cat("\n\n") # Add some vertical space between the tables
-
-# Convert AIC table to LaTeX and print
-cat(knitr::kable(model_tables$credit_spread_aic, format = "latex", booktabs = TRUE, caption = "Credit Spread AIC Table"))
-
-
 ```
 
 **Comment:**
@@ -971,10 +952,6 @@ jb <- jarque.bera.test(residuals(fit_ar3))
 
 cat("Ljung–Box p-value:", round(lb$p.value, 3), "\n")
 cat("Jarque–Bera p-value:", round(jb$p.value, 3), "\n")
-
-
-
-
 
 # Step 1: Estimate the Forecasts ----
 
@@ -1144,7 +1121,7 @@ fmt_sci <- function(x, digits = 2) {
   parts <- strsplit(s, "e", fixed = TRUE)[[1]]
   mant  <- parts[1]
   expn  <- as.integer(parts[2])
-  paste0("$\\mbox{", mant, " \\times 10^{", expn, "}}$")
+  paste0("$", mant, " \\times 10^{", expn, "}$")
 }
 
 # 1) Fit VAR
@@ -1211,7 +1188,7 @@ We estimated the VAR(6) model in the standard way in the preceding code chunk. A
   With a p-value of 0.193, we do *not reject* the null of no residual autocorrelation at standard confidence levels. This supports the chosen lag length and confirms that the model captures the joint dynamics of the series sufficiently well. This is a necessary condition for valid inference using IRFs and forecasts.
 
 - **ARCH Test for Conditional Heteroskedasticity**  
-  The null of no ARCH effects is *strongly rejected* (p ≈ 0), indicating time-varying volatility in the residuals. While this does not bias coefficient estimates, it does invalidate inference based on homoskedastic standard errors. This is why we will rely on *bootstrapped IRFs* in the next step.
+  The null of no ARCH effects is *strongly rejected* ($p \approx 0$), indicating time-varying volatility in the residuals. While this does not bias coefficient estimates, it does invalidate inference based on homoskedastic standard errors. This is why we will rely on *bootstrapped IRFs* in the next step.
 
 - **Jarque–Bera Test for Normality**  
   We also *strongly reject* the null of normally distributed residuals. This likely reflects skewness or heavy tails. While non-normality limits the applicability of asymptotic theory, most procedures we apply (e.g. bootstrapping) are robust to such deviations.
@@ -1219,7 +1196,7 @@ We estimated the VAR(6) model in the standard way in the preceding code chunk. A
 
 ## Exercise 2.3: Plot the in-sample and out-of-sample forecasts for one of the series
 
-```{r exercise2/3, echo=TRUE, fig.height=5, fig.width=8}
+```{r exercise2/3, echo=TRUE, fig.height=4, fig.width=8, echo = FALSE}
 
 # 1) In-sample fit vs actual
 ts_hist   <- ts(data_mat[,"cpi"],
@@ -1333,7 +1310,7 @@ Under this ordering, credit spread shocks are allowed to affect both industrial 
 
 ## Exercise 2.5: Show the orthogonalized impulse response functions for your system
 
-```{r exercise2/5, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
+```{r exercise2/5, echo=FALSE, fig.show='hold', fig.height=6, fig.width=8}
 
 # 1) Standardise each series so that 1 unit = 1σ  
 # Rescaling here is very helpful otherwise plots are non-informative 
@@ -1403,9 +1380,9 @@ par(op)
 
 The credit spread (CS) jumps sharply on impact, as expected, and gradually decays back toward zero by month 3–4. This suggests short-lived persistence of shocks in the growth rate of credit spreads.
 
-Industrial production (IP) growth responds notably: it falls sharply over the first two months (peak drop ≈ –0.3 SD), then slowly recovers, returning close to baseline around month 6–8.
+Industrial production (IP) growth responds notably: it falls sharply over the first two months (peak drop around –0.3 SD), then slowly recovers, returning close to baseline around month 6–8.
 
-Inflation (CPI) growth also dips initially (trough ≈ –0.25 SD at month 2) but recovers more quickly—already by month 3, effects are minor and mostly indistinguishable from zero.
+Inflation (CPI) growth also dips initially (trough around –0.25 SD at month 2) but recovers more quickly—already by month 3, effects are minor and mostly indistinguishable from zero.
 
 Overall, a one-standard-deviation tightening in financial conditions (wider credit spread) leads to a short-run contraction in both output and prices. Even though the effects on growth rates are transitory, all series are I(1), meaning that in levels, both IP and CPI are pushed onto a lower trajectory. This implies persistent real-side consequences from temporary financial stress.
 
@@ -1432,11 +1409,11 @@ Importantly, the Cholesky ordering (CS → IP → CPI) shapes the results. By pl
 
 Finally, while the magnitudes are not large (typically around 0.1–0.3 SD), they are meaningful given the monthly frequency. The real-side response to financial shocks is consistent with what we would expect from the literature, even if the estimated effects are not dramatic.
 
-*NB: Since all series are non-stationary, we had to apply first differencing before estimating the VAR. While this ensures statistical validity, it also makes the results somewhat harder to interpret economically, as we are now modeling changes rather than levels. As a result, the dynamics may appear less intuitive or economically rich. In such settings, approaches based on Vector Error Correction Models (VECMs) could offer more informative insights by explicitly capturing long-run relationships between the variables.*
+*NB: Since all series are non-stationary, we had to apply first differencing before estimating the VAR. While this ensures statistical validity, it also makes the results somewhat harder to interpret economically, as we are now modeling changes rather than levels. In such settings, approaches based on Vector Error Correction Models (VECMs) could offer more informative insights.*
 
 ## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
 
-```{r exercise_2/6, echo=FALSE, fig.show='hold', fig.height=8, fig.width=8}
+```{r exercise_2/6, echo=FALSE, fig.show='hold', fig.height=6, fig.width=8}
 # reversed ordering
 data_chol_rev <- data_scaled[, c("cpi", "cs", "ip")] 
 var_chol_rev  <- VAR(data_chol_rev, p = p_opt, type = "const")
