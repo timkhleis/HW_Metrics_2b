@@ -998,10 +998,323 @@ The AR(3) model provides a reasonable short-term baseline, capturing autocorrela
 
 # Exercise 2 - : Multivariate analysis
 
-```{r, include = FALSE}
+```{r prepare_ex2, include = FALSE}
+
+# Clean up environment again after exercise 1  
 rm(list=ls())
+
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+# 1. Import the Data ---- 
+
+# Setup
+fredr_set_key("8af1b2f98eef41dfe4b5ff6ffce1bbb0")
+start_date <- as.Date("2000-01-01")
+end_date   <- as.Date("2019-12-31")
+
+# Import Values 
+
+industrial    <- fredr("DEUPROINDMISMEI",
+                       observation_start = start_date,
+                       observation_end   = end_date,
+                       frequency         = "m")
+credit_spread <- fredr("BAMLHE00EHYIOAS",
+                       observation_start = start_date,
+                       observation_end   = end_date,
+                       frequency         = "m",
+                       aggregation_method= "avg")
+cpi           <- fredr("DEUCPALTT01IXOBSAM",
+                       observation_start = start_date,
+                       observation_end   = end_date,
+                       frequency         = "m")
+
+# Extract value columns as numeric vectors
+ip_vec  <- industrial$value
+cs_vec  <- credit_spread$value
+cpi_vec <- cpi$value
+
+# Take First  Differences (Integration of order 1)
+ip_diff  <- diff(log(ip_vec)) # log for interpretability 
+cpi_diff <- diff(log(cpi_vec)) # log for interpretability 
+cs_diff <- diff(cs_vec)
+
+
+# Combine all differenced series into a single multivariate time series object
+data_mat <- ts(
+  cbind(ip = ip_diff,
+        cpi = cpi_diff,
+        cs  = cs_diff),
+  start     = c(2000, 2), # start from 2nd observation (due to differencing)
+  frequency = 12 # monthly
+)
+
 ```
 
 ## Exercise 2.1: Select the optimal lag length for your multivariate model
 
+```{r exercise2/1, include=FALSE}
+sel <- VARselect(data_mat, lag.max = 8, type = "const")
+sel$selection
+```
+
+**Comment:**  
+The lag selection criteria point to different optimal values: both AIC *(Akaike Information Criterion)* and FPE *(Final Prediction Error)* suggest a lag length of 6, while HQ *(Hannan–Quinn)* selects 3 and SC *(Schwarz Criterion)* selects 1. Following standard practice, we prioritize the more parsimonious criteria, HQ and SC, which recommend lag orders of 3 and 1, respectively.
+
+Among these, we choose lag 3, as selected by the HQ criterion. While this includes fewer lags than the AIC-optimal specification, it still ensures that residuals are approximately serially uncorrelated (as confirmed in Question 2), which is essential for valid inference and for interpreting impulse response functions. In addition, a more parsimonious model reduces the risk of overfitting, which is particularly important in finite samples.
+
+
 ## Exercise 2.2: Estimate the model and verify that the residuals satisfy standard properties
+
+```{r exercise2/2, results='asis'}
+p_opt   <- sel$selection["AIC(n)"]
+var_mod <- VAR(data_mat, p = p_opt, type = "const")
+summary(var_mod)
+
+
+cat("\n--- Portmanteau (no serial correlation) ---\n")
+print(serial.test(var_mod, lags.pt = 12, type = "PT.asymptotic"))
+
+cat("\n--- ARCH (no ARCH effects) ---\n")
+print(arch.test(var_mod, lags.multi = 5))
+
+cat("\n--- Normality ---\n")
+print(normality.test(var_mod))
+```
+
+
+**Comment:** 
+There is no evidence of serial correlation at lag = 6. This is cinfimed by both The errors are not homoskedastic and they are also not normally distributed, which contradicts white noise. The errors are therefore not well-behaved and some robust techniques need to be used in order to work with this VAR. This is beacuse hypothesis testing is not valid if the errors are not well-behaved. The p-value for the Portmanteau test is 0.1929 which shows that we fail to reject the Null hypothesis that there is no serial autocorrelation. However, the p-values for the JB-test and the ARCH test on normality and heteroskedastcity are well-below 0.05 which means that we reject the null hypotheses. 
+
+
+## Exercise 2.3: Plot the in-sample and out-of-sample forecasts for one of the series
+
+```{r exercise2/3, echo=TRUE, fig.height=5, fig.width=8}
+
+# 1) In-sample fit vs actual
+ts_hist   <- ts(data_mat[,"cpi"],
+                start     = start(data_mat),
+                frequency = frequency(data_mat))
+ts_fitted <- ts(fitted(var_mod)[,"cpi"],
+                start     = start(data_mat),
+                frequency = frequency(data_mat))
+
+# 2) Out-of-sample forecast
+fcast   <- predict(var_mod, n.ahead = 12, ci = 0.95)
+cpi_mat <- fcast$fcst[["cpi"]]
+ts_fc    <- ts(cpi_mat[,"fcst"],
+               start     = end(data_mat) + c(0,1),
+               frequency = frequency(data_mat))
+ts_lo    <- ts(cpi_mat[,"lower"],
+               start     = start(ts_fc),
+               frequency = frequency(data_mat))
+ts_hi    <- ts(cpi_mat[,"upper"],
+               start     = start(ts_fc),
+               frequency = frequency(data_mat))
+
+
+par(mfrow = c(1,2), mar = c(4,4,2,1))
+
+# Panel 1
+plot(ts_hist,
+     ylab = expression(Δ~log~CPI),
+     xlab = "Years",
+     main = "Actual vs. Fitted CPI",
+     col  = "black", lty = 1)
+lines(ts_fitted, col = "red", lty = 2)
+legend("topleft",
+       legend = c("Actual","Fitted"),
+       col    = c("black","red"),
+       lty    = c(1,2),
+       bty    = "n")
+
+# Panel 2
+plot(ts_hist,
+     xlim = c(time(ts_hist)[1], time(ts_hi)[length(ts_hi)]),
+     ylim = range(c(ts_hist, ts_lo, ts_hi)),
+     ylab = expression(Δ~log~CPI),
+     xlab = "Years",
+     main = "CPI 1-Yr Ahead Forecast",
+     col  = "black", lty = 1)
+abline(v = time(ts_fc)[1], lty = 3, col = "grey")
+lines(ts_fc, col = "blue", lty = 1)
+lines(ts_lo, col = "red",  lty = 2)
+lines(ts_hi, col = "red",  lty = 2)
+legend("topright",
+       legend = c("History","Forecast","95% CI"),
+       col    = c("black","blue","red"),
+       lty    = c(1,1,2),
+       bty    = "n")
+
+
+par(mfrow = c(1,1))
+
+``` 
+Panel 1: Actual vs. Fitted CPI
+
+In the first graph we see that the actual and the fitted inflation rate (log difference of CPI) seem to be pretty similar expect for a few months. The early 2015 deflationary episode is not well picked up by the fitted values and so is the inflation around 2008-09 which is unsurprising considering the unexpected financial crisis. The 2015 deflationary episode could be due to the collapse of oil prices globally around that period. 
+
+Panel 2: CPI 1-Year Ahead Forecast
+
+The one-year forecasts show a slight deflationary trend at the start and then a subtle bout of inflation from the summer down to the end. The confidence intervals (the red dotted lines around the blue dashed line) grow over time because the more ahead in the forecast the more uncertainty we have over what could happen and therefore the more unsure our estimates are. However, we need to be careful with these confidence intervals because they are analytic and the non-Gaussian characteristics of our residuals mean that they could be biased. In fact, their validity relies on the Gaussian behaviour of the residuals. The bootstrapped intervals which are not shown here but which we will use later are robust to this issue of heteroskedasticity.  
+
+## Exercise 2.4: Using the Cholesky decomposition, explain the reasoning behind your chosen ordering of variables
+
+```{r exercise 2/4, echo = FALSE}
+
+data_chol <- data_mat[, c("cs","cpi","ip")]
+var_chol  <- VAR(data_chol, p = p_opt, type = "const")
+summary(var_chol)
+
+```
+The order we chose is credit spread first, inflation second and industrial production last. This is because the the first thing that responds to any global financial shock is the financial market, i.e. the credit spread. Next, the effects trickle down to affect the inflation rate and from there they hit the industrial production last. The progressively lagged responses that are associated with each series is what motivated us to order the processes this way.
+
+
+## Exercise 2.5: Show the orthogonalized impulse response functions for your system
+
+```{r five, echo=FALSE, fig.show='hold', fig.height=8, fig.width=6}
+
+data_chol <- data_mat[, c("cs","cpi","ip")]
+
+
+var_chol  <- VAR(data_chol, p = p_opt, type = "const")
+
+
+
+oirf      <- irf(var_chol,
+                 impulse  = NULL,   
+                 response = NULL,   
+                 ortho    = TRUE,
+                 boot     = TRUE,
+                 ci       = 0.95,
+                 runs     = 500,)
+
+
+
+
+
+# impulses and responses
+impulses <- names(oirf$irf)               # e.g. c("cs","cpi","ip")
+responses <- colnames( oirf$irf[[1]] )    # same
+
+# set up 3×3 plotting region
+op <- par(mfrow = c(length(responses), length(impulses)),
+          mar   = c(4, 4, 2, 1) + 0.1,
+          las   = 1)
+
+for(imp in impulses) {
+  # pull out the  matrix for this impulse
+  resp_mat  <- oirf$irf[[imp]]   # rows = horizons 1…n.ahead
+  lower_mat <- oirf$Lower[[imp]]
+  upper_mat <- oirf$Upper[[imp]]
+
+  # how many horizons do we actually have?
+  H <- nrow(resp_mat)
+  # build horizon from 0 to H
+  h <- 0:H
+
+  for(resp in responses) {
+    # prepend the t=0 value (own‐shock magnitude = 1)
+    irf_vec <- c(1, as.numeric(resp_mat[,resp]))
+    lo_vec  <- c(1, as.numeric(lower_mat[,resp]))
+    hi_vec  <- c(1, as.numeric(upper_mat[,resp]))
+
+    plot(h, irf_vec,
+         type  = "l",
+         lty   = 1,
+         xlab  = "Horizon (months)",
+         ylab  = resp,
+         main  = paste0("Response of ", resp,
+                        " to a ", imp, " shock"),
+         ylim  = range(c(lo_vec, hi_vec)))
+    lines(h, lo_vec, lty = 2)
+    lines(h, hi_vec, lty = 2)
+    abline(h = 0, col = "grey60")
+  }
+}
+
+
+
+
+
+
+
+
+
+par(op)
+
+```
+
+
+
+Applying the Cholesky ordering we imposed, a shock affects credit spread which then affects inflation which then affects IP: 
+
+Panel 1: We look at the effect of a one SD credit spread shock on each variable. A credit shock increases CS by 0.8 units at t = 1 and then decays quite quickly; at t = 2 it is already at just 0.2 of a standard deviation. After five months the model implies it slightly dips under zero and then reverts back to its mean value of zero. The effect on CPI and IP shock is virtually constant and null. We can therefore say that a one standard deviation shock of CS has no statistically significant effect on CPI and IP. The CI follow the shape of the series throughout and tightly sandwich the series making the plot trustworthy.
+
+Panel 2: We look at the effect of a one standard-deviation shock of CPI. We see that it makes the CS increase slightly by around 0.1 and then it goes up and down slightly period by period before it dissipates towards its mean zero at the end. Its effect on inflation and industrial production are essentially zero. 
+
+Panel 3: Here we see the effect of a one SD shock of industrial production. On the CS we can see that it zig-zags around zero going from positive to negative for about 6 periods before reverting to zero. The effect on inflation and IP is basically null. 
+
+We can conclude that the only variable that is affected by any shock in any variable is the credit spread. This is an interesting finding. It seems like inflation and industrial production is very stable in Germany and that fluctuations are only felt on the financial market. This could be a sign of a stable economy.
+
+
+NB: We used the bootstrapped confidence intervals which means that they are robust under heteroskedasticity. 
+
+
+## Exercise 2.6: Modify the ordering of the variables and comment how this affects your results
+
+```{r six, echo=FALSE, fig.show='hold', fig.height=8, fig.width=6}
+# reversed ordering
+data_chol_rev <- data_mat[, c("ip","cpi","cs")]
+var_chol_rev  <- VAR(data_chol_rev, p = p_opt, type = "const")
+oirf_rev      <- irf(var_chol_rev,
+                     impulse  = NULL,
+                     response = NULL,
+                     ortho    = TRUE,
+                     boot     = TRUE,
+                     ci       = 0.95,
+                     runs     = 500)
+
+# same 3×3 layout as before
+impulses <- names(oirf_rev$irf)
+responses <- colnames(oirf_rev$irf[[1]])
+
+op <- par(mfrow = c(length(responses), length(impulses)),
+          mar   = c(4, 4, 2, 1) + 0.1,
+          las   = 1)
+
+for(imp in impulses) {
+  resp_mat  <- oirf_rev$irf[[imp]]
+  lower_mat <- oirf_rev$Lower[[imp]]
+  upper_mat <- oirf_rev$Upper[[imp]]
+
+  H <- nrow(resp_mat)
+  h <- 0:H
+
+  for(resp in responses) {
+    irf_vec <- c(1, as.numeric(resp_mat[,resp]))
+    lo_vec  <- c(1, as.numeric(lower_mat[,resp]))
+    hi_vec  <- c(1, as.numeric(upper_mat[,resp]))
+
+    plot(h, irf_vec,
+         type  = "l",
+         lty   = 1,
+         xlab  = "Horizon (months)",
+         ylab  = resp,
+         main  = paste0("Response of ", resp,
+                        " to an ", imp, " shock"),
+         ylim  = range(c(lo_vec, hi_vec)))
+    lines(h, lo_vec, lty = 2)
+    lines(h, hi_vec, lty = 2)
+    abline(h = 0, col = "grey60")
+  }
+}
+
+par(op)
+
+
+
+
+```
+
+
+Upon reversing the ordering of the propgation of shocks, i.e. IP first, then inflation and then CS, we can see that the plots look roughly the same. This means that the results are order-invariant and that the impulse responses are robust to the Cholesky ordering. This is good news as it shows that the order in which we run the IRF's is irrelevant, our results are still the same. This makes the economic conclusions more robust. We can therefore conclude that in Germany inflation and industrial production really are unaffected to an infationary shock, an industrial production shock and a CS shock. 
